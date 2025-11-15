@@ -87,7 +87,11 @@ async function init() {
 }
 
 async function ensureSession() {
-  const session = await fetchSession();
+  let session = await fetchSession();
+
+  if (!session) {
+    session = await waitForInitialSession();
+  }
 
   if (!session) {
     persistLaunchParamsIfNeeded();
@@ -121,12 +125,20 @@ function attachAuthGuards() {
   if (authGuardsAttached) return;
   authGuardsAttached = true;
 
-  supabase.auth.onAuthStateChange((_event, newSession) => {
-    if (!newSession) {
+  supabase.auth.onAuthStateChange((event, newSession) => {
+    if (event === "SIGNED_OUT") {
       state.session = null;
       broadcastAuthState(false);
       redirectToLanding();
-    } else {
+      return;
+    }
+
+    if (
+      event === "SIGNED_IN" ||
+      event === "TOKEN_REFRESHED" ||
+      event === "INITIAL_SESSION"
+    ) {
+      if (!newSession) return;
       state.session = newSession;
       hydrateUserChip(newSession.user);
       broadcastAuthState(true);
@@ -664,27 +676,10 @@ function detectContent(value) {
 
 async function resolveTitle(detected) {
   if (detected.type === "link" && detected.url) {
-    const title = await fetchTitle(detected.url);
-    return title || prettifyHostname(detected.hostname) || detected.url;
+    return prettifyHostname(detected.hostname) || detected.url;
   }
   if (detected.type === "color") {
     return detected.color;
-  }
-  return null;
-}
-
-async function fetchTitle(url) {
-  try {
-    const response = await fetch(`https://r.jina.ai/${url}`);
-    if (!response.ok) return null;
-    const text = await response.text();
-    const match = text.match(/<title[^>]*>(.*?)<\/title>/i);
-    if (match) {
-      const parser = new DOMParser();
-      return parser.parseFromString(match[1], "text/html").body.textContent;
-    }
-  } catch (_error) {
-    return null;
   }
   return null;
 }
@@ -822,6 +817,34 @@ function subscribeToRealtime() {
       }
     )
     .subscribe();
+}
+
+function waitForInitialSession(timeout = 1500) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(null);
+    }, timeout);
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "INITIAL_SESSION") {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          cleanup();
+          resolve(session);
+        }
+      }
+    );
+
+    function cleanup() {
+      subscription?.subscription?.unsubscribe();
+    }
+  });
 }
 
 function persistLaunchParamsIfNeeded() {
