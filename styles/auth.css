@@ -125,6 +125,20 @@ input:disabled {
   background: var(--button-hover);
 }
 
+.login-button.google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 600;
+  border-color: var(--input-border);
+}
+
+.login-button.google img {
+  width: 18px;
+  height: 18px;
+}
+
 .login-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -144,6 +158,13 @@ input:disabled {
 
 .forgot-link a:hover {
   color: var(--text);
+}
+
+.google-note {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .error {
