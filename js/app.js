@@ -201,14 +201,26 @@ function hydrateUserChip(user) {
         .join("")
         .slice(0, 2)
     : "B";
-  ui.userAvatar.textContent = initials || "B";
-  ui.userName.textContent = user.user_metadata?.full_name || "BMarks user";
-  ui.userEmail.textContent = user.email ?? "Unknown";
-  ui.menuUserEmail.textContent = user.email ?? "";
-  ui.displayNameInput.value = user.user_metadata?.full_name || "";
-  ui.accountInfo.textContent = `Member since ${formatDate(
-    user.created_at || new Date().toISOString()
-  )}`;
+  if (ui.userAvatar) {
+    ui.userAvatar.textContent = initials || "B";
+  }
+  if (ui.userName) {
+    ui.userName.textContent = user.user_metadata?.full_name || "BMarks user";
+  }
+  if (ui.userEmail) {
+    ui.userEmail.textContent = user.email ?? "Unknown";
+  }
+  if (ui.menuUserEmail) {
+    ui.menuUserEmail.textContent = user.email ?? "";
+  }
+  if (ui.displayNameInput) {
+    ui.displayNameInput.value = user.user_metadata?.full_name || "";
+  }
+  if (ui.accountInfo) {
+    ui.accountInfo.textContent = `Member since ${formatDate(
+      user.created_at || new Date().toISOString()
+    )}`;
+  }
 }
 
 function bindGlobalEvents() {
