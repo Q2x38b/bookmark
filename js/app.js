@@ -21,12 +21,11 @@ const projectRef = env.url
 const AUTH_STORAGE_KEY = projectRef ? `sb-${projectRef}-auth-token` : null;
 const PENDING_BOOKMARK_KEY = "bmarks.pendingBookmark";
 const PENDING_BOOKMARK_TTL = 1000 * 60 * 10; // 10 minutes
-const SESSION_CACHE_KEY = "bmarks.sessionCache";
 const LANDING_PATH = "index.html";
 const supportsBroadcast =
   typeof window !== "undefined" && "BroadcastChannel" in window;
 const hasStorage =
-  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  typeof window !== "undefined" && "localStorage" in window;
 const authBroadcast = supportsBroadcast
   ? new BroadcastChannel("bmarks-auth")
   : null;
@@ -88,15 +87,7 @@ async function init() {
 }
 
 async function ensureSession() {
-  let session = await fetchSession();
-
-  if (!session) {
-    session = await restoreSessionFromCache();
-  }
-
-  if (!session) {
-    session = await waitForInitialSession();
-  }
+  const session = await fetchSession();
 
   if (!session) {
     persistLaunchParamsIfNeeded();
@@ -106,7 +97,6 @@ async function ensureSession() {
 
   state.session = session;
   hydrateUserChip(session.user);
-  cacheSession(session);
   attachAuthGuards();
   return session;
 }
@@ -115,13 +105,15 @@ async function fetchSession() {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  if (session) {
-    cacheSession(session);
-  }
   return session;
 }
 
 function redirectToLanding() {
+  if (typeof window === "undefined") return;
+  const path = window.location.pathname || "";
+  const alreadyThere =
+    path.endsWith(`/${LANDING_PATH}`) || path.endsWith(LANDING_PATH);
+  if (alreadyThere) return;
   window.location.replace(LANDING_PATH);
 }
 
@@ -133,12 +125,10 @@ function attachAuthGuards() {
     if (!newSession) {
       state.session = null;
       broadcastAuthState(false);
-      clearCachedSession();
       redirectToLanding();
     } else {
       state.session = newSession;
       hydrateUserChip(newSession.user);
-      cacheSession(newSession);
       broadcastAuthState(true);
     }
   });
@@ -174,7 +164,6 @@ async function refreshSession() {
 
   if (!session) {
     state.session = null;
-    clearCachedSession();
     redirectToLanding();
     return null;
   }
@@ -188,7 +177,6 @@ async function refreshSession() {
     await Promise.all([fetchGroups(), fetchBookmarks()]);
   }
 
-  cacheSession(session);
   return session;
 }
 
@@ -589,7 +577,17 @@ async function handleBookmarkSubmit(event) {
   let title = ui.bookmarkTitle.value.trim();
 
   if (!title) {
-    title = await autoTitle(detected, content);
+    title = await resolveTitle(detected);
+  }
+
+  if (!title) {
+    ui.bookmarkTitle?.setCustomValidity(
+      "Please provide a title for plain text notes."
+    );
+    ui.bookmarkTitle?.reportValidity();
+    return;
+  } else {
+    ui.bookmarkTitle?.setCustomValidity("");
   }
 
   const payload = {
@@ -664,16 +662,15 @@ function detectContent(value) {
   }
 }
 
-async function autoTitle(detected, fallback) {
+async function resolveTitle(detected) {
   if (detected.type === "link" && detected.url) {
     const title = await fetchTitle(detected.url);
-    if (title) return title;
-    return prettifyHostname(detected.hostname) || detected.url;
+    return title || prettifyHostname(detected.hostname) || detected.url;
   }
   if (detected.type === "color") {
     return detected.color;
   }
-  return fallback.slice(0, 48) || "Untitled";
+  return null;
 }
 
 async function fetchTitle(url) {
@@ -696,7 +693,8 @@ function updatePreview() {
   if (!ui.previewCard) return;
   const content = ui.bookmarkContent.value.trim();
   const detected = detectContent(content);
-  const title = ui.bookmarkTitle.value.trim() || autoPreviewTitle(detected);
+  const manualTitle = ui.bookmarkTitle.value.trim();
+  const title = manualTitle || autoPreviewTitle(detected);
   const titleNode = ui.previewCard.querySelector(".preview-title");
   const metaNode = ui.previewCard.querySelector(".preview-meta");
   const icon = ui.previewCard.querySelector(".preview-icon");
@@ -707,7 +705,9 @@ function updatePreview() {
       ? detected.hostname || "Link"
       : detected.type === "color"
       ? detected.color
-      : "Plain text";
+      : manualTitle
+      ? "Plain text"
+      : "Plain text · title required";
   if (detected.type === "color") {
     icon.style.background = detected.color;
     icon.innerHTML = "";
@@ -726,12 +726,12 @@ function updatePreview() {
 
 function autoPreviewTitle(detected) {
   if (detected.type === "link") {
-    return prettifyHostname(detected.hostname) || "New link";
+    return prettifyHostname(detected.hostname) || "Loading title…";
   }
   if (detected.type === "color") {
     return detected.color;
   }
-  return detected.text?.slice(0, 32) || "New note";
+  return "Add a title";
 }
 
 function openModal(id) {
@@ -822,87 +822,6 @@ function subscribeToRealtime() {
       }
     )
     .subscribe();
-}
-
-async function waitForInitialSession(timeout = 2000) {
-  return new Promise((resolve) => {
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      resolve(null);
-    }, timeout);
-
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "INITIAL_SESSION") {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          cleanup();
-          resolve(session);
-        }
-      }
-    );
-
-    function cleanup() {
-      subscription?.subscription?.unsubscribe();
-    }
-  });
-}
-
-function cacheSession(session) {
-  if (!hasStorage) return;
-  if (!session) {
-    clearCachedSession();
-    return;
-  }
-  try {
-    localStorage.setItem(
-      SESSION_CACHE_KEY,
-      JSON.stringify({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-      })
-    );
-  } catch (error) {
-    console.warn("Unable to cache session", error);
-  }
-}
-
-function clearCachedSession() {
-  if (!hasStorage) return;
-  try {
-    localStorage.removeItem(SESSION_CACHE_KEY);
-  } catch (error) {
-    console.warn("Unable to clear cached session", error);
-  }
-}
-
-async function restoreSessionFromCache() {
-  if (!hasStorage) return null;
-  try {
-    const raw = localStorage.getItem(SESSION_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.access_token || !parsed?.refresh_token) return null;
-    const { data, error } = await supabase.auth.setSession({
-      access_token: parsed.access_token,
-      refresh_token: parsed.refresh_token,
-    });
-    if (error) {
-      clearCachedSession();
-      return null;
-    }
-    if (data?.session) {
-      cacheSession(data.session);
-      return data.session;
-    }
-  } catch (error) {
-    console.warn("Unable to restore cached session", error);
-  }
-  return null;
 }
 
 function persistLaunchParamsIfNeeded() {
