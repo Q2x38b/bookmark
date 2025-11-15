@@ -179,38 +179,6 @@ input:disabled {
   border-color: var(--text-secondary);
 }
 
-.google-button img {
-  width: 20px;
-  height: 20px;
-}
-
-.secondary-button {
-  width: 100%;
-  margin-top: 0.75rem;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 0.65rem;
-  color: var(--text-primary);
-  font-family: var(--font-geist-mono);
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.secondary-button:hover {
-  background: var(--hover-bg);
-  border-color: var(--text-secondary);
-}
-
-.auth-note {
-  font-family: var(--font-geist-mono);
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  text-align: center;
-  margin-top: 0.5rem;
-}
-
 .forgot-link {
   margin-top: 1rem;
   text-align: center;
@@ -226,6 +194,24 @@ input:disabled {
 }
 
 .forgot-link a:hover {
+  color: var(--foreground);
+}
+
+.auth-foot {
+  margin-top: 0.5rem;
+  text-align: center;
+  font-family: var(--font-geist-sans);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.auth-foot a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  transition: color 0.15s ease;
+}
+
+.auth-foot a:hover {
   color: var(--foreground);
 }
 

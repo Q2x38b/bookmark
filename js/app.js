@@ -40,6 +40,7 @@ const state = {
     search: "",
     groupId: null,
   },
+  editingBookmarkId: null,
 };
 
 const ui = {
@@ -62,6 +63,8 @@ const ui = {
   bookmarkContent: document.getElementById("bookmarkContent"),
   bookmarkTitle: document.getElementById("bookmarkTitle"),
   previewCard: document.getElementById("previewCard"),
+  saveBookmarkButton: document.getElementById("bookmarkSubmitButton"),
+  deleteBookmarkButton: document.getElementById("deleteBookmarkButton"),
   userChip: document.getElementById("userChip"),
   userMenu: document.getElementById("userMenu"),
   userAvatar: document.getElementById("userAvatar"),
@@ -282,6 +285,7 @@ function bindGlobalEvents() {
 
   ui.openBookmarkModal?.addEventListener("click", () => {
     ui.bookmarkForm?.reset();
+    enterBookmarkCreateMode();
     updatePreview();
     openModal("bookmarkModal");
     ui.bookmarkContent?.focus();
@@ -329,6 +333,18 @@ function bindGlobalEvents() {
   ui.bookmarkForm?.addEventListener("submit", handleBookmarkSubmit);
   ui.bookmarkContent?.addEventListener("input", updatePreview);
   ui.bookmarkTitle?.addEventListener("input", updatePreview);
+  ui.deleteBookmarkButton?.addEventListener("click", handleBookmarkDelete);
+  ui.bookmarkList?.addEventListener("click", (event) => {
+    if (event.target.closest("a")) return;
+    const row = event.target.closest(".bookmark-row");
+    if (!row?.dataset.bookmarkId) return;
+    const bookmark = state.bookmarks.find(
+      (entry) => entry.id === row.dataset.bookmarkId
+    );
+    if (bookmark) {
+      startEditingBookmark(bookmark);
+    }
+  });
 
   document.addEventListener("keyup", (event) => {
     if (event.key === "Escape") {
@@ -346,6 +362,14 @@ function bindGlobalEvents() {
   });
 
   updatePreview();
+  enterBookmarkCreateMode();
+
+  document.getElementById("preferencesBtn")?.addEventListener("click", () =>
+    window.alert("Preferences are coming soon.")
+  );
+  document.getElementById("shortcutsBtn")?.addEventListener("click", () =>
+    window.alert("Keyboard shortcuts coming soon.")
+  );
 }
 
 function toggleGroupDropdown(force) {
@@ -534,8 +558,7 @@ function renderBookmarkRow(bookmark) {
   const url = bookmark.url || (bookmark.type === "link" ? bookmark.content : "");
   const domain = url ? safeHostname(url) : "";
   return `
-    <li class="bookmark-row">
-      <time class="bookmark-date">${formatDate(bookmark.created_at)}</time>
+    <li class="bookmark-row" data-bookmark-id="${bookmark.id}">
       <div class="bookmark-main">
         ${iconMarkup}
         <div class="bookmark-copy">
@@ -562,8 +585,28 @@ function renderBookmarkRow(bookmark) {
           </div>
         </div>
       </div>
+      <time class="bookmark-date">${formatDate(bookmark.created_at)}</time>
     </li>
   `;
+}
+
+function enterBookmarkCreateMode() {
+  state.editingBookmarkId = null;
+  ui.saveBookmarkButton && (ui.saveBookmarkButton.textContent = "Save Bookmark");
+  ui.deleteBookmarkButton?.classList.add("is-hidden");
+  ui.bookmarkTitle?.setCustomValidity("");
+}
+
+function startEditingBookmark(bookmark) {
+  state.editingBookmarkId = bookmark.id;
+  if (ui.bookmarkContent) ui.bookmarkContent.value = bookmark.content;
+  if (ui.bookmarkTitle) ui.bookmarkTitle.value = bookmark.title || "";
+  if (ui.groupSelect) ui.groupSelect.value = bookmark.group_id || "";
+  ui.saveBookmarkButton && (ui.saveBookmarkButton.textContent = "Update Bookmark");
+  ui.deleteBookmarkButton?.classList.remove("is-hidden");
+  updatePreview();
+  openModal("bookmarkModal");
+  ui.bookmarkContent?.focus();
 }
 
 function createIconMarkup(bookmark) {
@@ -614,8 +657,7 @@ async function handleBookmarkSubmit(event) {
     ui.bookmarkTitle?.setCustomValidity("");
   }
 
-  const payload = {
-    user_id: state.session.user.id,
+  const basePayload = {
     content,
     title,
     type: detected.type,
@@ -632,21 +674,66 @@ async function handleBookmarkSubmit(event) {
     },
   };
 
-  const { data, error } = await supabase
-    .from("bookmarks")
-    .insert(payload)
-    .select()
-    .single();
+  let record;
+  if (state.editingBookmarkId) {
+    const updatePayload = { ...basePayload };
+    const { data, error } = await supabase
+      .from("bookmarks")
+      .update(updatePayload)
+      .eq("id", state.editingBookmarkId)
+      .select()
+      .single();
+    if (error) {
+      console.error("Failed to update bookmark", error);
+      return;
+    }
+    record = data;
+    state.bookmarks = state.bookmarks.map((bookmark) =>
+      bookmark.id === record.id ? normalizeBookmark(record) : bookmark
+    );
+  } else {
+    const insertPayload = {
+      user_id: state.session.user.id,
+      ...basePayload,
+    };
+    const { data, error } = await supabase
+      .from("bookmarks")
+      .insert(insertPayload)
+      .select()
+      .single();
 
-  if (error) {
-    console.error("Failed to save bookmark", error);
-    return;
+    if (error) {
+      console.error("Failed to save bookmark", error);
+      return;
+    }
+    record = data;
+    state.bookmarks = [normalizeBookmark(record), ...state.bookmarks];
   }
 
-  state.bookmarks = [normalizeBookmark(data), ...state.bookmarks];
   renderBookmarks();
   ui.bookmarkForm.reset();
+  enterBookmarkCreateMode();
   updatePreview();
+  closeModal("bookmarkModal");
+}
+
+async function handleBookmarkDelete() {
+  const bookmarkId = state.editingBookmarkId;
+  if (!bookmarkId) return;
+  const { error } = await supabase
+    .from("bookmarks")
+    .delete()
+    .eq("id", bookmarkId);
+  if (error) {
+    console.error("Failed to delete bookmark", error);
+    return;
+  }
+  state.bookmarks = state.bookmarks.filter(
+    (bookmark) => bookmark.id !== bookmarkId
+  );
+  renderBookmarks();
+  ui.bookmarkForm?.reset();
+  enterBookmarkCreateMode();
   closeModal("bookmarkModal");
 }
 
@@ -831,7 +918,7 @@ function subscribeToRealtime() {
     .subscribe();
 }
 
-function waitForInitialSession(timeout = 1500) {
+function waitForInitialSession(timeout = 4000) {
   return new Promise((resolve) => {
     let settled = false;
     const timer = setTimeout(() => {

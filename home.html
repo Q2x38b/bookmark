@@ -48,6 +48,9 @@
               <p id="menuUserEmail" style="font-family: var(--font-satoshi); font-size: 0.875rem; color: var(--text-primary);">—</p>
             </div>
             <button type="button" class="user-menu-item" id="accountSettingsBtn">Account settings</button>
+            <button type="button" class="user-menu-item" id="preferencesBtn">Preferences</button>
+            <button type="button" class="user-menu-item" id="shortcutsBtn">Keyboard shortcuts</button>
+            <hr />
             <button type="button" class="user-menu-item" id="signOutBtn">Sign out</button>
           </div>
         </div>
@@ -71,8 +74,8 @@
 
       <section class="bookmarks-section">
         <div class="section-header">
-          <span class="section-title">Created</span>
           <span class="section-title">Title</span>
+          <span class="section-title">Created</span>
         </div>
         <ul id="bookmarkList" class="bookmark-list" aria-live="polite">
           <li class="empty-state">
@@ -120,7 +123,10 @@
             </div>
           </div>
           
-          <button type="submit" class="btn-primary">Save Bookmark</button>
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary" id="bookmarkSubmitButton">Save Bookmark</button>
+            <button type="button" class="btn-danger is-hidden" id="deleteBookmarkButton">Delete Bookmark</button>
+          </div>
         </form>
       </div>
     </div>
@@ -152,6 +158,20 @@
 
     <script src="js/config.js"></script>
     <script type="module" src="js/app.js"></script>
+    <script>
+      (function scrubHtmlExtension() {
+        if (!window.history?.replaceState) return;
+        const path = window.location.pathname;
+        if (!path.endsWith(".html")) return;
+        let newPath = path.replace(/index\.html$/i, "");
+        if (newPath === path) {
+          newPath = path.slice(0, -5);
+        }
+        if (!newPath) newPath = "/";
+        const next = `${newPath}${window.location.search}${window.location.hash}`;
+        window.history.replaceState({}, "", next);
+      })();
+    </script>
   </body>
 </html>
 
