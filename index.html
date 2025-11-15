@@ -3,245 +3,49 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BMarks — ultra minimal bookmark keeper</title>
-    <link rel="stylesheet" href="styles/app.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <title>BMarks — (Basic) Bookmarks</title>
+    <link rel="stylesheet" href="styles/home.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <header class="app-header">
-        <div class="header-left">
-          <button class="logo" aria-label="BMarks home">
-            <span class="logo-mark">B</span>
-            <span class="logo-type">Marks</span>
-          </button>
-          <div class="group-picker" data-open="false">
-            <button
-              class="group-picker__button"
-              id="groupPickerButton"
-              type="button"
-            >
-              <span id="activeGroupLabel">All bookmarks</span>
-              <svg
-                aria-hidden="true"
-                role="presentation"
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-              >
-                <path
-                  d="M3 5l4 4 4-4"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-            <div class="group-picker__dropdown" id="groupDropdown">
-              <div class="dropdown-head">
-                <div>
-                  <p class="eyebrow">Groups</p>
-                  <p class="muted">Organize bookmarks by context</p>
-                </div>
-                <button
-                  type="button"
-                  class="ghost tiny"
-                  id="openGroupCreator"
-                >
-                  New group
-                </button>
-              </div>
-              <div class="dropdown-body" id="groupOptions"></div>
-              <form class="group-form" id="groupForm">
-                <label class="visually-hidden" for="groupNameInput"
-                  >Group name</label
-                >
-                <input
-                  id="groupNameInput"
-                  name="groupName"
-                  placeholder="Name your group"
-                  autocomplete="off"
-                  required
-                />
-                <button type="submit">Save</button>
-              </form>
-            </div>
-          </div>
+    <div class="home-container">
+      <header class="home-header">
+        <div class="logo">
+          <span class="logo-icon">👋</span>
         </div>
-        <div class="header-center">
-          <div class="search-bar" role="search">
-            <button
-              class="icon-button primary"
-              id="openBookmarkModal"
-              type="button"
-              aria-label="Add bookmark"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16">
-                <path
-                  d="M8 3v10M3 8h10"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                />
-              </svg>
-            </button>
-            <input
-              id="searchInput"
-              type="search"
-              placeholder="Insert a link, color, or just plain text..."
-              autocomplete="off"
-            />
-            <button
-              class="icon-button ghost"
-              id="clearSearchButton"
-              type="button"
-              aria-label="Clear search"
-            >
-              Esc
-            </button>
-          </div>
-        </div>
-        <div class="header-right">
-          <button class="user-chip" id="userChip" type="button">
-            <span class="avatar" id="userAvatar">?</span>
-            <div class="user-copy">
-              <strong id="userName">Guest</strong>
-              <span id="userEmail">Sign in</span>
-            </div>
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-              <path
-                d="M3 5l4 4 4-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-          <div class="user-menu" id="userMenu" data-open="false">
-            <div class="user-menu__section">
-              <p class="muted tiny">Signed in as</p>
-              <p id="menuUserEmail" class="menu-email">—</p>
-            </div>
-            <button type="button" class="menu-item" id="accountSettingsBtn">
-              Account settings
-            </button>
-            <hr />
-            <button type="button" class="menu-item danger" id="signOutBtn">
-              Sign out
-            </button>
-          </div>
-        </div>
+        <a href="login.html" class="login-link">Login</a>
       </header>
 
-      <main class="app-main">
-        <section class="list-panel">
-          <div class="list-head">
-            <span>Created</span>
-            <span>Title</span>
-          </div>
-          <ul id="bookmarkList" class="bookmark-list" aria-live="polite">
-            <li class="empty-state">
-              <p>Loading bookmarks…</p>
-            </li>
-          </ul>
+      <main class="home-content">
+        <h1 class="home-title">(Basic) Bookmarks</h1>
+        <p class="home-description">
+          A home for collecting and retrieving the most precious hyperlinks. You
+          should probably be using something else, though.
+        </p>
+
+        <section class="home-section">
+          <h2>About</h2>
+          <p>
+            Built for personal usage, designed with personal preferences. Bare-featured,
+            <del>minimal</del> boring interface. Auto-detect input content type. Render
+            links with page metadata. Keyboard-first design. Animated appropriately.
+            Loads fast <em>(citation needed)</em>. No onboarding. No tracking. No ads, ever.
+          </p>
+        </section>
+
+        <section class="home-section">
+          <h2>Credits</h2>
+          <p>
+            Thank you to <a href="https://lanceross.xyz" target="_blank" rel="noopener">Lance</a> for designing the logomark, and 
+            <a href="https://pedro.to" target="_blank" rel="noopener">Pedro</a> for helping build
+            the 🧨 <a href="https://www.raycast.com/extensions" target="_blank" rel="noopener">Raycast extension</a>.
+          </p>
         </section>
       </main>
-    </div>
 
-    <div class="modal" id="bookmarkModal" aria-hidden="true">
-      <div class="modal__overlay" data-close-modal></div>
-      <div class="modal__panel">
-        <header>
-          <div>
-            <p class="eyebrow">Add bookmark</p>
-            <h2>Capture anything</h2>
-          </div>
-          <button
-            type="button"
-            class="icon-button ghost"
-            data-close-modal
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </header>
-        <form id="bookmarkForm">
-          <label class="field">
-            <span>Content<span class="req">*</span></span>
-            <textarea
-              id="bookmarkContent"
-              name="content"
-              rows="3"
-              placeholder="Paste a link, a #color, or jot down text…"
-              required
-            ></textarea>
-          </label>
-          <label class="field">
-            <span>Title</span>
-            <input
-              id="bookmarkTitle"
-              name="title"
-              placeholder="Optional, auto-fills for links"
-            />
-          </label>
-          <label class="field">
-            <span>Group</span>
-            <select id="bookmarkGroup" name="group">
-              <option value="">No group</option>
-            </select>
-          </label>
-          <div class="preview" id="bookmarkPreview">
-            <p class="muted tiny">Preview updates as you type</p>
-            <div class="preview-card" id="previewCard">
-              <div class="preview-icon"></div>
-              <div>
-                <p class="preview-title">Your bookmark title</p>
-                <p class="preview-meta">meta</p>
-              </div>
-            </div>
-          </div>
-          <button type="submit" class="primary full-width">
-            Save bookmark
-          </button>
-        </form>
-      </div>
+      <footer class="home-footer">
+        <span class="version">v0.02</span>
+        <span class="signature">✝</span>
+      </footer>
     </div>
-
-    <div class="modal" id="accountModal" aria-hidden="true">
-      <div class="modal__overlay" data-close-modal></div>
-      <div class="modal__panel small">
-        <header>
-          <div>
-            <p class="eyebrow">Account</p>
-            <h2>Profile settings</h2>
-          </div>
-          <button
-            type="button"
-            class="icon-button ghost"
-            data-close-modal
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </header>
-        <form id="accountForm">
-          <label class="field">
-            <span>Display name</span>
-            <input id="displayNameInput" name="displayName" />
-          </label>
-          <p class="muted tiny" id="accountInfo"></p>
-          <button type="submit" class="primary full-width">Save</button>
-        </form>
-      </div>
-    </div>
-
-    <script src="js/config.js"></script>
-    <script type="module" src="js/app.js"></script>
   </body>
 </html>

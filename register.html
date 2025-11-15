@@ -9,6 +9,7 @@
   <body data-auth-mode="register">
     <div class="auth-container">
       <div class="auth-card">
+        <a href="index.html" class="back-link">← Back</a>
         <h1>Create account</h1>
         
         <form class="auth-form">
@@ -48,6 +49,13 @@
           Already have an account? <a href="login.html"><u>Login instead</u></a>
         </p>
         <p class="google-note">Google is the only provider for now.</p>
+        <button
+          type="button"
+          class="secondary-button"
+          onclick="window.location.href='login.html'"
+        >
+          Have an account? Sign in
+        </button>
         <p class="error" id="authError"></p>
       </div>
     </div>

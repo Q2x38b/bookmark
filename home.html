@@ -3,50 +3,155 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BMarks — (Basic) Bookmarks</title>
-    <link rel="stylesheet" href="styles/home.css" />
+    <title>BMarks — ultra minimal bookmark keeper</title>
+    <link rel="stylesheet" href="styles/main.css" />
   </head>
   <body>
-    <div class="home-container">
-      <header class="home-header">
-        <div class="logo">
-          <span class="logo-icon">👋</span>
+    <div class="container">
+      <header class="app-header">
+        <div class="header-left">
+          <div class="logo">
+            <span class="logo-icon">B</span>
+            <span>Marks</span>
+          </div>
+          
+          <div class="group-picker" data-open="false">
+            <button class="group-picker-button" id="groupPickerButton" type="button">
+              <span id="activeGroupLabel">All bookmarks</span>
+              <svg width="14" height="14" viewBox="0 0 14 14">
+                <path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            
+            <div class="group-dropdown" id="groupDropdown">
+              <div id="groupOptions"></div>
+              <button type="button" id="openGroupCreator" style="width: 100%; padding: 0.5rem; background: transparent; border: none; color: var(--text-secondary); font-family: var(--font-geist-mono); font-size: 0.75rem; cursor: pointer; text-align: left;">+ New group</button>
+              <form class="group-form" id="groupForm">
+                <input id="groupNameInput" name="groupName" placeholder="Group name" autocomplete="off" required />
+                <button type="submit">Create</button>
+              </form>
+            </div>
+          </div>
         </div>
-        <a href="login.html" class="login-link">Login</a>
+        
+        <div class="header-right">
+          <button class="user-chip" id="userChip" type="button">
+            <span class="user-avatar" id="userAvatar">?</span>
+            <svg width="14" height="14" viewBox="0 0 14 14">
+              <path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          
+          <div class="user-menu" id="userMenu" data-open="false">
+            <div style="padding: 0.75rem; border-bottom: 1px solid var(--border-subtle);">
+              <p style="font-family: var(--font-geist-mono); font-size: 0.625rem; color: var(--text-secondary); margin-bottom: 0.25rem;">SIGNED IN AS</p>
+              <p id="menuUserEmail" style="font-family: var(--font-satoshi); font-size: 0.875rem; color: var(--text-primary);">—</p>
+            </div>
+            <button type="button" class="user-menu-item" id="accountSettingsBtn">Account settings</button>
+            <button type="button" class="user-menu-item" id="signOutBtn">Sign out</button>
+          </div>
+        </div>
       </header>
 
-      <main class="home-content">
-        <h1 class="home-title">(Basic) Bookmarks</h1>
-        <p class="home-description">
-          A home for collecting and retrieving the most precious hyperlinks. You
-          should probably be using something else, though.
-        </p>
+      <div class="search-container">
+        <div class="search-wrapper">
+          <button class="add-bookmark-btn" id="openBookmarkModal" type="button" aria-label="Add bookmark">
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <input id="searchInput" class="search-input" type="search" placeholder="Search bookmarks..." autocomplete="off" />
+          <button class="clear-search-btn" id="clearSearchButton" type="button" aria-label="Clear search">
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M12 4L4 12M4 4l8 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
 
-        <section class="home-section">
-          <h2>About</h2>
-          <p>
-            Built for personal usage, designed with personal preferences. Bare-featured,
-            <del>minimal</del> boring interface. Auto-detect input content type. Render
-            links with page metadata. Keyboard-first design. Animated appropriately.
-            Loads fast <em>(citation needed)</em>. No onboarding. No tracking. No ads, ever.
-          </p>
-        </section>
-
-        <section class="home-section">
-          <h2>Credits</h2>
-          <p>
-            Thank you to <a href="https://lanceross.xyz" target="_blank" rel="noopener">Lance</a> for designing the logomark, and 
-            <a href="https://pedro.to" target="_blank" rel="noopener">Pedro</a> for helping build
-            the 🧨 <a href="https://www.raycast.com/extensions" target="_blank" rel="noopener">Raycast extension</a>.
-          </p>
-        </section>
-      </main>
-
-      <footer class="home-footer">
-        <span class="version">v0.02</span>
-        <span class="signature">✝</span>
-      </footer>
+      <section class="bookmarks-section">
+        <div class="section-header">
+          <span class="section-title">Created</span>
+          <span class="section-title">Title</span>
+        </div>
+        <ul id="bookmarkList" class="bookmark-list" aria-live="polite">
+          <li class="empty-state">
+            <p>Loading bookmarks…</p>
+          </li>
+        </ul>
+      </section>
     </div>
+
+    <!-- Add Bookmark Modal -->
+    <div class="modal" id="bookmarkModal" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">Add Bookmark</h2>
+          <button type="button" class="modal-close" data-close-modal aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <path d="M15 5L5 15M5 5l10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        
+        <form id="bookmarkForm" class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="bookmarkContent">Content</label>
+            <textarea id="bookmarkContent" class="form-textarea" name="content" rows="3" placeholder="Paste a link, #color, or text..." required></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="bookmarkTitle">Title (optional)</label>
+            <input id="bookmarkTitle" class="form-input" name="title" placeholder="Auto-fills for links" />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="bookmarkGroup">Group</label>
+            <select id="bookmarkGroup" class="form-select" name="group">
+              <option value="">No group</option>
+            </select>
+          </div>
+          
+          <div class="preview-card" id="previewCard">
+            <div class="preview-icon"></div>
+            <div class="preview-details">
+              <p class="preview-title">Your bookmark title</p>
+              <p class="preview-meta">Preview</p>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn-primary">Save Bookmark</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Account Modal -->
+    <div class="modal" id="accountModal" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">Account Settings</h2>
+          <button type="button" class="modal-close" data-close-modal aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <path d="M15 5L5 15M5 5l10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        
+        <form id="accountForm" class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="displayNameInput">Display Name</label>
+            <input id="displayNameInput" class="form-input" name="displayName" />
+          </div>
+          
+          <p id="accountInfo" style="font-family: var(--font-geist-mono); font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem;"></p>
+          
+          <button type="submit" class="btn-primary">Save Changes</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script type="module" src="js/app.js"></script>
   </body>
 </html>
 

@@ -21,8 +21,12 @@ const projectRef = env.url
 const AUTH_STORAGE_KEY = projectRef ? `sb-${projectRef}-auth-token` : null;
 const PENDING_BOOKMARK_KEY = "bmarks.pendingBookmark";
 const PENDING_BOOKMARK_TTL = 1000 * 60 * 10; // 10 minutes
+const SESSION_CACHE_KEY = "bmarks.sessionCache";
+const LANDING_PATH = "index.html";
 const supportsBroadcast =
   typeof window !== "undefined" && "BroadcastChannel" in window;
+const hasStorage =
+  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 const authBroadcast = supportsBroadcast
   ? new BroadcastChannel("bmarks-auth")
   : null;
@@ -84,16 +88,25 @@ async function init() {
 }
 
 async function ensureSession() {
-  const session = await fetchSession();
+  let session = await fetchSession();
+
+  if (!session) {
+    session = await restoreSessionFromCache();
+  }
+
+  if (!session) {
+    session = await waitForInitialSession();
+  }
 
   if (!session) {
     persistLaunchParamsIfNeeded();
-    redirectHome();
+    redirectToLanding();
     return null;
   }
 
   state.session = session;
   hydrateUserChip(session.user);
+  cacheSession(session);
   attachAuthGuards();
   return session;
 }
@@ -102,11 +115,14 @@ async function fetchSession() {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+  if (session) {
+    cacheSession(session);
+  }
   return session;
 }
 
-function redirectHome() {
-  window.location.replace("home.html");
+function redirectToLanding() {
+  window.location.replace(LANDING_PATH);
 }
 
 function attachAuthGuards() {
@@ -117,10 +133,12 @@ function attachAuthGuards() {
     if (!newSession) {
       state.session = null;
       broadcastAuthState(false);
-      redirectHome();
+      clearCachedSession();
+      redirectToLanding();
     } else {
       state.session = newSession;
       hydrateUserChip(newSession.user);
+      cacheSession(newSession);
       broadcastAuthState(true);
     }
   });
@@ -129,7 +147,7 @@ function attachAuthGuards() {
     authBroadcast.addEventListener("message", ({ data }) => {
       if (data?.type !== "auth") return;
       if (!data.hasSession) {
-        redirectHome();
+        redirectToLanding();
       } else {
         refreshSession();
       }
@@ -156,7 +174,8 @@ async function refreshSession() {
 
   if (!session) {
     state.session = null;
-    redirectHome();
+    clearCachedSession();
+    redirectToLanding();
     return null;
   }
 
@@ -169,6 +188,7 @@ async function refreshSession() {
     await Promise.all([fetchGroups(), fetchBookmarks()]);
   }
 
+  cacheSession(session);
   return session;
 }
 
@@ -804,9 +824,90 @@ function subscribeToRealtime() {
     .subscribe();
 }
 
+async function waitForInitialSession(timeout = 2000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(null);
+    }, timeout);
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "INITIAL_SESSION") {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          cleanup();
+          resolve(session);
+        }
+      }
+    );
+
+    function cleanup() {
+      subscription?.subscription?.unsubscribe();
+    }
+  });
+}
+
+function cacheSession(session) {
+  if (!hasStorage) return;
+  if (!session) {
+    clearCachedSession();
+    return;
+  }
+  try {
+    localStorage.setItem(
+      SESSION_CACHE_KEY,
+      JSON.stringify({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      })
+    );
+  } catch (error) {
+    console.warn("Unable to cache session", error);
+  }
+}
+
+function clearCachedSession() {
+  if (!hasStorage) return;
+  try {
+    localStorage.removeItem(SESSION_CACHE_KEY);
+  } catch (error) {
+    console.warn("Unable to clear cached session", error);
+  }
+}
+
+async function restoreSessionFromCache() {
+  if (!hasStorage) return null;
+  try {
+    const raw = localStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.access_token || !parsed?.refresh_token) return null;
+    const { data, error } = await supabase.auth.setSession({
+      access_token: parsed.access_token,
+      refresh_token: parsed.refresh_token,
+    });
+    if (error) {
+      clearCachedSession();
+      return null;
+    }
+    if (data?.session) {
+      cacheSession(data.session);
+      return data.session;
+    }
+  } catch (error) {
+    console.warn("Unable to restore cached session", error);
+  }
+  return null;
+}
+
 function persistLaunchParamsIfNeeded() {
   if (!hasLaunchPayload(pendingUrlPayload)) return;
-  if (typeof localStorage === "undefined") return;
+  if (!hasStorage) return;
   try {
     localStorage.setItem(
       PENDING_BOOKMARK_KEY,
@@ -863,7 +964,7 @@ function hydrateBookmarkFormFromPayload(payload) {
 }
 
 function consumePendingBookmark() {
-  if (typeof localStorage === "undefined") return null;
+  if (!hasStorage) return null;
   try {
     const raw = localStorage.getItem(PENDING_BOOKMARK_KEY);
     if (!raw) return null;

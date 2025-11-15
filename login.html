@@ -9,6 +9,7 @@
   <body data-auth-mode="login">
     <div class="auth-container">
       <div class="auth-card">
+        <a href="index.html" class="back-link">← Back</a>
         <h1>Login</h1>
         
         <form class="auth-form">
@@ -48,6 +49,13 @@
           Forgot your password? <a href="#"><u>Well that sucks.</u></a>
         </p>
         <p class="google-note">Only Google sign-in is available right now.</p>
+        <button
+          type="button"
+          class="secondary-button"
+          onclick="window.location.href='register.html'"
+        >
+          Need an account? Sign up
+        </button>
         <p class="error" id="authError"></p>
       </div>
     </div>
