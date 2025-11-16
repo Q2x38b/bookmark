@@ -24,7 +24,7 @@
             </button>
             
             <div class="group-dropdown" id="groupDropdown">
-              <div id="groupOptions"></div>
+              <div id="groupOptions" class="group-options"></div>
               <div class="group-divider"></div>
               <div class="group-actions">
                 <button type="button" class="group-action-button" id="openGroupCreator">+ New group</button>
@@ -34,10 +34,6 @@
                 <input id="groupNameInput" name="groupName" placeholder="Group name" autocomplete="off" required />
                 <button type="submit">Create</button>
               </form>
-              <div class="group-delete-menu is-hidden" id="groupDeleteMenu">
-                <p class="group-delete-label">Choose a group to delete:</p>
-                <div id="groupDeleteOptions"></div>
-              </div>
             </div>
           </div>
         </div>
@@ -59,7 +55,6 @@
             <button type="button" class="user-menu-item" id="preferencesBtn">Preferences</button>
             <button type="button" class="user-menu-item" id="shortcutsBtn">Keyboard shortcuts</button>
             <hr />
-            <hr class="menu-divider" />
             <button type="button" class="user-menu-item signout" id="signOutBtn">Sign out</button>
           </div>
         </div>

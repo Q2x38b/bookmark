@@ -205,6 +205,11 @@ input:disabled {
   color: var(--text-secondary);
 }
 
+.auth-foot.top {
+  margin: 0;
+  text-align: left;
+}
+
 .auth-foot a {
   color: var(--text-primary);
   text-decoration: underline;

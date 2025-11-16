@@ -41,6 +41,7 @@ const state = {
     groupId: null,
   },
   editingBookmarkId: null,
+  groupDeleteMode: false,
 };
 
 const ui = {
@@ -55,8 +56,6 @@ const ui = {
   groupNameInput: document.getElementById("groupNameInput"),
   openGroupCreator: document.getElementById("openGroupCreator"),
   openGroupDeleter: document.getElementById("openGroupDeleter"),
-  groupDeleteMenu: document.getElementById("groupDeleteMenu"),
-  groupDeleteOptions: document.getElementById("groupDeleteOptions"),
   activeGroupLabel: document.getElementById("activeGroupLabel"),
   groupSelect: document.getElementById("bookmarkGroup"),
   openBookmarkModal: document.getElementById("openBookmarkModal"),
@@ -268,10 +267,15 @@ function bindGlobalEvents() {
   });
 
   ui.openGroupCreator?.addEventListener("click", () => {
+    state.groupDeleteMode = false;
+    toggleGroupDeleteMode(false);
     ui.groupForm?.classList.toggle("visible");
     if (ui.groupForm?.classList.contains("visible")) {
       ui.groupNameInput?.focus();
     }
+  });
+  ui.openGroupDeleter?.addEventListener("click", () => {
+    toggleGroupDeleteMode();
   });
 
   ui.groupForm?.addEventListener("submit", async (event) => {
@@ -281,13 +285,6 @@ function bindGlobalEvents() {
     await createGroup(name);
     ui.groupNameInput.value = "";
     ui.groupForm.classList.remove("visible");
-  });
-  ui.openGroupDeleter?.addEventListener("click", () => {
-    ui.groupForm?.classList.remove("visible");
-    ui.groupDeleteMenu?.classList.toggle("is-hidden");
-    if (!ui.groupDeleteMenu?.classList.contains("is-hidden")) {
-      renderGroupDeleteOptions();
-    }
   });
 
   ui.searchInput?.addEventListener("input", (event) => {
@@ -398,7 +395,8 @@ function toggleGroupDropdown(force) {
       : ui.groupPicker.getAttribute("data-open") !== "true";
   ui.groupPicker.setAttribute("data-open", String(nextState));
   if (!nextState) {
-    ui.groupDeleteMenu?.classList.add("is-hidden");
+    state.groupDeleteMode = false;
+    renderGroups();
   }
 }
 
@@ -429,17 +427,19 @@ async function fetchGroups() {
   }));
   renderGroups();
   renderBookmarks();
-  renderGroupDeleteOptions();
 }
 
 function renderGroups() {
   if (!ui.groupOptions) return;
-  const counts = state.bookmarks.reduce((acc, bookmark) => {
-    const key = bookmark.group_id || "__none";
-    acc[key] = (acc[key] || 0) + 1;
-    acc.all = (acc.all || 0) + 1;
-    return acc;
-  }, {});
+  const counts = state.bookmarks.reduce(
+    (acc, bookmark) => {
+      const key = bookmark.group_id || "__none";
+      acc[key] = (acc[key] || 0) + 1;
+      acc.all = (acc.all || 0) + 1;
+      return acc;
+    },
+    { all: 0 }
+  );
   const options = [
     {
       id: null,
@@ -447,24 +447,33 @@ function renderGroups() {
     },
     ...state.groups,
   ];
+  const deleteMode = state.groupDeleteMode;
 
   ui.groupOptions.innerHTML = options
-    .map(
-      (group) => `
+    .map((group) => {
+      const isAll = group.id === null;
+      const countLabel =
+        deleteMode && group.id
+          ? "×"
+          : group.id
+          ? counts[group.id] || 0
+          : counts.all || 0;
+      const tagClass =
+        deleteMode && group.id ? "tag danger" : "tag muted tiny";
+      return `
         <button
           type="button"
           class="group-option ${
-            state.filters.groupId === group.id ? "active" : ""
-          }"
+            state.filters.groupId === group.id && !deleteMode ? "active" : ""
+          } ${deleteMode ? "delete-mode" : ""}"
           data-group-id="${group.id ?? ""}"
+          ${isAll && deleteMode ? "data-disabled=true" : ""}
         >
-          <span>${group.name}</span>
-          <span class="tag muted tiny">${
-            group.id ? counts[group.id] || 0 : counts.all || 0
-          }</span>
+          <span>${escapeHtml(group.name)}</span>
+          <span class="${tagClass}">${countLabel}</span>
         </button>
-      `
-    )
+      `;
+    })
     .join("");
 
   ui.groupOptions
@@ -472,7 +481,12 @@ function renderGroups() {
     .forEach((button) =>
       button.addEventListener("click", () => {
         const groupId = button.dataset.groupId || null;
+        if (state.groupDeleteMode && groupId) {
+          confirmDeleteGroup(groupId);
+          return;
+        }
         state.filters.groupId = groupId;
+        state.groupDeleteMode = false;
         ui.activeGroupLabel.textContent =
           state.groups.find((group) => group.id === groupId)?.name ||
           "All bookmarks";
@@ -490,35 +504,22 @@ function renderGroups() {
       )
       .join("")}`;
   }
+
+  if (ui.openGroupDeleter) {
+    ui.openGroupDeleter.textContent = state.groupDeleteMode
+      ? "Cancel delete"
+      : "Delete group";
+  }
 }
 
-function renderGroupDeleteOptions() {
-  if (!ui.groupDeleteOptions) return;
-  if (!state.groups.length) {
-    ui.groupDeleteOptions.innerHTML =
-      '<p class="group-delete-label">No groups available.</p>';
-    return;
-  }
-  ui.groupDeleteOptions.innerHTML = state.groups
-    .map(
-      (group) => `
-        <button type="button" class="group-delete-option" data-group-id="${group.id}">
-          <span>${escapeHtml(group.name)}</span>
-          <span style="opacity:0.6">×</span>
-        </button>`
-    )
-    .join("");
-  ui.groupDeleteOptions
-    .querySelectorAll(".group-delete-option")
-    .forEach((button) =>
-      button.addEventListener("click", () =>
-        confirmDeleteGroup(button.dataset.groupId)
-      )
-    );
+function toggleGroupDeleteMode(force) {
+  state.groupDeleteMode =
+    typeof force === "boolean" ? force : !state.groupDeleteMode;
+  renderGroups();
 }
 
 async function confirmDeleteGroup(groupId) {
-  if (!groupId || !state.session) return;
+  if (!state.session || !groupId) return;
   const group = state.groups.find((entry) => entry.id === groupId);
   if (!group) return;
   const confirmed = window.confirm(
@@ -543,11 +544,11 @@ async function confirmDeleteGroup(groupId) {
   }));
   if (state.filters.groupId === groupId) {
     state.filters.groupId = null;
+    ui.activeGroupLabel.textContent = "All bookmarks";
   }
+  state.groupDeleteMode = false;
   renderGroups();
   renderBookmarks();
-  renderGroupDeleteOptions();
-  ui.groupDeleteMenu?.classList.add("is-hidden");
 }
 
 async function createGroup(name) {
@@ -570,7 +571,7 @@ async function createGroup(name) {
   }));
   renderGroups();
   renderBookmarks();
-  renderGroupDeleteOptions();
+  toggleGroupDeleteMode(false);
 }
 
 async function fetchBookmarks() {
@@ -814,6 +815,7 @@ async function handleBookmarkDelete() {
   );
   state.editingBookmarkId = null;
   renderBookmarks();
+  renderGroups();
   ui.bookmarkForm?.reset();
   enterBookmarkCreateMode();
   closeModal("bookmarkModal");
@@ -868,11 +870,8 @@ async function resolveTitle(detected) {
 
 async function fetchPageTitle(url) {
   try {
-    const normalized = url.startsWith("http") ? url : `https://${url}`;
-    const protocol = normalized.startsWith("http://") ? "http" : "https";
-    const host = normalized.replace(/^https?:\/\//, "");
-    const proxyUrl = `https://r.jina.ai/${protocol}://${host}`;
-    const response = await fetch(proxyUrl);
+    const normalized = /^(https?:\/\/)/i.test(url) ? url : `https://${url}`;
+    const response = await fetch(`https://r.jina.ai/${normalized}`);
     if (!response.ok) return null;
     const text = await response.text();
     const match = text.match(/<title[^>]*>(.*?)<\/title>/i);
@@ -944,6 +943,8 @@ function closeModal(id) {
   modal.setAttribute("aria-hidden", "true");
   if (id === "bookmarkModal") {
     enterBookmarkCreateMode();
+    ui.bookmarkForm?.reset();
+    updatePreview();
   }
 }
 
