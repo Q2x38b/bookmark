@@ -90,122 +90,240 @@ body {
 }
 
 .home-container {
-  max-width: 38rem;
+  max-width: 42rem;
   margin: 0 auto;
-  padding: 2.5rem 1.5rem;
+  padding: 3rem 1.5rem;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-.home-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 3rem;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-}
-
-.logo-icon {
-  font-size: 28px;
-  line-height: 1;
-}
-
-.login-link {
+.landing-body {
+  background: var(--background);
   color: var(--text-primary);
-  text-decoration: underline;
-  font-size: 0.875rem;
-  font-family: var(--font-geist-mono);
-  transition: color 0.2s;
+  margin: 0;
 }
 
-.login-link:hover {
-  color: var(--foreground);
+.landing-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
 }
 
-.home-content {
+.landing-sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  gap: 2.5rem;
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-satoshi);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.brand-dot {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #f26659, #ff9b6a);
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.brand-name {
+  letter-spacing: 0.02em;
+}
+
+.landing-nav {
   flex: 1;
 }
 
-.home-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0 0 0.75rem;
-  color: var(--text-primary);
-  font-family: var(--font-satoshi);
-}
-
-.home-description {
-  font-size: 0.9375rem;
+.nav-title {
+  font-family: var(--font-geist-mono);
+  font-size: 0.75rem;
   color: var(--text-secondary);
-  margin: 0 0 3rem;
-  line-height: 1.6;
-  font-family: var(--font-satoshi);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
 }
 
-.home-section {
-  margin-bottom: 2.5rem;
-}
-
-.home-section h2 {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem;
-  color: var(--text-primary);
-  font-family: var(--font-satoshi);
-}
-
-.home-section p {
-  font-size: 0.9375rem;
-  color: var(--text-secondary);
+.landing-nav ul {
+  list-style: none;
+  padding: 0;
   margin: 0;
-  line-height: 1.65;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.landing-nav li {
   font-family: var(--font-satoshi);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.home-section a {
+.landing-nav li:hover,
+.landing-nav li.active {
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
-  text-decoration: underline;
-  transition: color 0.2s;
 }
 
-.home-section a:hover {
-  color: var(--foreground);
+.landing-pill {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-geist-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
 }
 
-.home-section del {
-  text-decoration: line-through;
-  opacity: 0.7;
-}
-
-.home-section em {
-  font-style: italic;
-}
-
-.home-footer {
+.landing-footer {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding-top: 1.5rem;
-  margin-top: auto;
-  color: var(--text-secondary);
-  font-size: 0.8125rem;
   font-family: var(--font-geist-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
-.version {
-  font-style: italic;
-  opacity: 0.7;
+.landing-main {
+  padding: 2.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
-.signature {
-  font-size: 20px;
-  line-height: 1;
-  opacity: 0.7;
+.landing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.landing-login {
+  font-family: var(--font-geist-mono);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  transition: all 0.15s ease;
+}
+
+.landing-login:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.landing-title h1 {
+  margin: 0 0 0.4rem;
+  font-size: 2rem;
+  font-family: var(--font-satoshi);
+}
+
+.landing-title p {
+  margin: 0;
+  font-family: var(--font-geist-sans);
+  color: var(--text-secondary);
+}
+
+.landing-search {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  font-family: var(--font-geist-mono);
+  color: var(--text-secondary);
+}
+
+.landing-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans);
+  font-size: 0.9rem;
+}
+
+.landing-search input::placeholder {
+  color: var(--text-secondary);
+}
+
+.landing-search span {
+  font-size: 0.75rem;
+}
+
+.landing-table {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.table-head {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  font-family: var(--font-geist-mono);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.landing-table ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-table li {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.landing-table li:last-child {
+  border-bottom: none;
+}
+
+.landing-table strong {
+  font-family: var(--font-satoshi);
+  display: block;
+  color: var(--text-primary);
+}
+
+.landing-table span {
+  font-family: var(--font-geist-mono);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.landing-table time {
+  font-family: var(--font-geist-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: right;
+}
 }
 
 @media (max-width: 640px) {

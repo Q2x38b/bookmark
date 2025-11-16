@@ -6,46 +6,89 @@
     <title>BMarks — (Basic) Bookmarks</title>
     <link rel="stylesheet" href="styles/home.css" />
   </head>
-  <body>
-    <div class="home-container">
-      <header class="home-header">
-        <div class="logo">
-          <span class="logo-icon">👋</span>
+  <body class="landing-body">
+    <div class="landing-shell">
+      <aside class="landing-sidebar">
+        <div class="brand-mark">
+          <span class="brand-dot"></span>
+          <span class="brand-name">BMarks</span>
         </div>
-        <a href="/login" class="login-link">Login</a>
-      </header>
+        <nav class="landing-nav">
+          <p class="nav-title">Collections</p>
+          <ul>
+            <li>Design</li>
+            <li>Life</li>
+            <li>Code</li>
+            <li>Twitter</li>
+            <li class="active">Fonts</li>
+            <li>YouTube</li>
+            <li>Books</li>
+            <li>Inspo</li>
+            <li>Swift</li>
+          </ul>
+          <button class="landing-pill">+ New Group</button>
+        </nav>
+        <div class="landing-footer">
+          <span>v0.02</span>
+          <span>✝</span>
+        </div>
+      </aside>
 
-      <main class="home-content">
-        <h1 class="home-title">(Basic) Bookmarks</h1>
-        <p class="home-description">
-          A home for collecting and retrieving the most precious hyperlinks. You
-          should probably be using something else, though.
-        </p>
+      <main class="landing-main">
+        <header class="landing-header">
+          <div class="landing-title">
+            <h1>(Basic) Bookmarks</h1>
+            <p>Collect fonts, palettes, articles, and anything in between.</p>
+          </div>
+          <a class="landing-login" href="/login">Login</a>
+        </header>
 
-        <section class="home-section">
-          <h2>About</h2>
-          <p>
-            Built for personal usage, designed with personal preferences. Bare-featured,
-            <del>minimal</del> boring interface. Auto-detect input content type. Render
-            links with page metadata. Keyboard-first design. Animated appropriately.
-            Loads fast <em>(citation needed)</em>. No onboarding. No tracking. No ads, ever.
-          </p>
-        </section>
+        <div class="landing-search">
+          <span>⌘</span><span>K</span>
+          <input
+            type="text"
+            placeholder="Insert a link, color, or plain text…"
+            disabled
+          />
+        </div>
 
-        <section class="home-section">
-          <h2>Credits</h2>
-          <p>
-            Thank you to <a href="https://lanceross.xyz" target="_blank" rel="noopener">Lance</a> for designing the logomark, and 
-            <a href="https://pedro.to" target="_blank" rel="noopener">Pedro</a> for helping build
-            the 🧨 <a href="https://www.raycast.com/extensions" target="_blank" rel="noopener">Raycast extension</a>.
-          </p>
-        </section>
+        <div class="landing-table">
+          <div class="table-head">
+            <span>Title</span>
+            <span>Created at</span>
+          </div>
+          <ul>
+            <li>
+              <div>
+                <strong>Century Schoolbook Font</strong>
+                <span>myfonts.com</span>
+              </div>
+              <time>Jan 27</time>
+            </li>
+            <li>
+              <div>
+                <strong>Helvetica Now | Monotype</strong>
+                <span>monotype.com</span>
+              </div>
+              <time>Jan 06</time>
+            </li>
+            <li>
+              <div>
+                <strong>Just a moment…</strong>
+                <span>creatorstoolbox.co</span>
+              </div>
+              <time>Nov 20, 2023</time>
+            </li>
+            <li>
+              <div>
+                <strong>Diatype</strong>
+                <span>abcdinamo.com</span>
+              </div>
+              <time>Oct 25, 2023</time>
+            </li>
+          </ul>
+        </div>
       </main>
-
-      <footer class="home-footer">
-        <span class="version">v0.02</span>
-        <span class="signature">✝</span>
-      </footer>
     </div>
     <script>
     (function scrubHtmlExtension() {

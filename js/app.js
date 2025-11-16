@@ -199,12 +199,13 @@ async function refreshSession() {
 }
 
 function hydrateUserChip(user) {
-  // Use Google avatar if available
-  const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
-  
+  const avatarUrl =
+    user.user_metadata?.avatar_url ||
+    user.user_metadata?.picture ||
+    user.user_metadata?.profile_picture;
   if (ui.userAvatar) {
     if (avatarUrl) {
-      ui.userAvatar.innerHTML = `<img src="${avatarUrl}" alt="Profile" style="width: 100%; height: 100%; border-radius: 4px; object-fit: cover;" />`;
+      ui.userAvatar.innerHTML = `<img src="${avatarUrl}" alt="Profile" style="width:100%;height:100%;object-fit:cover;" />`;
     } else {
       const initials = user.email
         ? user.email
@@ -267,18 +268,9 @@ function bindGlobalEvents() {
   });
 
   ui.openGroupCreator?.addEventListener("click", () => {
-    ui.groupDeleteMenu?.classList.add("is-hidden");
     ui.groupForm?.classList.toggle("visible");
     if (ui.groupForm?.classList.contains("visible")) {
       ui.groupNameInput?.focus();
-    }
-  });
-
-  ui.openGroupDeleter?.addEventListener("click", () => {
-    ui.groupForm?.classList.remove("visible");
-    ui.groupDeleteMenu?.classList.toggle("is-hidden");
-    if (!ui.groupDeleteMenu?.classList.contains("is-hidden")) {
-      renderGroupDeleteOptions();
     }
   });
 
@@ -290,7 +282,13 @@ function bindGlobalEvents() {
     ui.groupNameInput.value = "";
     ui.groupForm.classList.remove("visible");
   });
-
+  ui.openGroupDeleter?.addEventListener("click", () => {
+    ui.groupForm?.classList.remove("visible");
+    ui.groupDeleteMenu?.classList.toggle("is-hidden");
+    if (!ui.groupDeleteMenu?.classList.contains("is-hidden")) {
+      renderGroupDeleteOptions();
+    }
+  });
   ui.searchInput?.addEventListener("input", (event) => {
     state.filters.search = event.target.value.toLowerCase();
     renderBookmarks();
@@ -427,6 +425,9 @@ async function fetchGroups() {
   }));
   renderGroups();
   renderBookmarks();
+  if (!ui.groupDeleteMenu?.classList.contains("is-hidden")) {
+    renderGroupDeleteOptions();
+  }
 }
 
 function renderGroups() {
@@ -489,6 +490,61 @@ function renderGroups() {
   }
 }
 
+function renderGroupDeleteOptions() {
+  if (!ui.groupDeleteOptions) return;
+  if (!state.groups.length) {
+    ui.groupDeleteOptions.innerHTML =
+      '<p class="group-delete-label">No groups available.</p>';
+    return;
+  }
+  ui.groupDeleteOptions.innerHTML = state.groups
+    .map(
+      (group) => `
+        <button type="button" class="group-delete-option" data-group-id="${group.id}">
+          <span>${escapeHtml(group.name)}</span>
+          <span style="opacity:0.6;">×</span>
+        </button>`
+    )
+    .join("");
+  ui.groupDeleteOptions
+    .querySelectorAll(".group-delete-option")
+    .forEach((btn) =>
+      btn.addEventListener("click", () => confirmDeleteGroup(btn.dataset.groupId))
+    );
+}
+
+async function confirmDeleteGroup(groupId) {
+  if (!groupId || !state.session) return;
+  const group = state.groups.find((g) => g.id === groupId);
+  if (!group) return;
+  const confirmed = window.confirm(
+    `Delete "${group.name}"? Bookmarks remain but lose this label.`
+  );
+  if (!confirmed) return;
+  const { error } = await supabase
+    .from("groups")
+    .delete()
+    .eq("id", groupId)
+    .eq("user_id", state.session.user.id);
+  if (error) {
+    console.error("Failed to delete group", error);
+    return;
+  }
+  state.groups = state.groups.filter((g) => g.id !== groupId);
+  state.bookmarks = state.bookmarks.map((bookmark) => ({
+    ...bookmark,
+    groupName:
+      state.groups.find((group) => group.id === bookmark.group_id)?.name ||
+      null,
+  }));
+  if (state.filters.groupId === groupId) {
+    state.filters.groupId = null;
+  }
+  renderGroups();
+  renderBookmarks();
+  renderGroupDeleteOptions();
+}
+
 async function createGroup(name) {
   if (!state.session) return;
   const { data, error } = await supabase
@@ -507,70 +563,6 @@ async function createGroup(name) {
       state.groups.find((group) => group.id === bookmark.group_id)?.name ||
       null,
   }));
-  renderGroups();
-  renderBookmarks();
-}
-
-function renderGroupDeleteOptions() {
-  if (!ui.groupDeleteOptions) return;
-  
-  if (state.groups.length === 0) {
-    ui.groupDeleteOptions.innerHTML = `<p style="font-family: var(--font-geist-mono); font-size: 0.7rem; color: var(--text-secondary); padding: 0.5rem;">No groups to delete</p>`;
-    return;
-  }
-  
-  ui.groupDeleteOptions.innerHTML = state.groups
-    .map(
-      (group) =>
-        `<button type="button" class="group-delete-option" data-group-id="${group.id}">
-          <span>${escapeHtml(group.name)}</span>
-          <span style="font-family: var(--font-geist-mono); font-size: 0.7rem; opacity: 0.6;">×</span>
-        </button>`
-    )
-    .join("");
-  
-  // Add event listeners to delete buttons
-  ui.groupDeleteOptions.querySelectorAll(".group-delete-option").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const groupId = btn.dataset.groupId;
-      await deleteGroup(groupId);
-    });
-  });
-}
-
-async function deleteGroup(groupId) {
-  if (!state.session || !groupId) return;
-  
-  const group = state.groups.find((g) => g.id === groupId);
-  if (!group) return;
-  
-  const confirmed = window.confirm(`Delete group "${group.name}"? Bookmarks in this group will not be deleted.`);
-  if (!confirmed) return;
-  
-  const { error } = await supabase
-    .from("groups")
-    .delete()
-    .eq("id", groupId)
-    .eq("user_id", state.session.user.id);
-  
-  if (error) {
-    console.error("Failed to delete group", error);
-    return;
-  }
-  
-  state.groups = state.groups.filter((g) => g.id !== groupId);
-  state.bookmarks = state.bookmarks.map((bookmark) => ({
-    ...bookmark,
-    groupName:
-      state.groups.find((group) => group.id === bookmark.group_id)?.name ||
-      null,
-  }));
-  
-  if (state.filters.groupId === groupId) {
-    state.filters.groupId = null;
-  }
-  
-  ui.groupDeleteMenu?.classList.add("is-hidden");
   renderGroups();
   renderBookmarks();
 }
@@ -858,13 +850,8 @@ function detectContent(value) {
 
 async function resolveTitle(detected) {
   if (detected.type === "link" && detected.url) {
-    try {
-      const title = await fetchPageTitle(detected.url);
-      return title || prettifyHostname(detected.hostname) || detected.url;
-    } catch (error) {
-      console.warn("Failed to fetch page title:", error);
-      return prettifyHostname(detected.hostname) || detected.url;
-    }
+    const title = await fetchPageTitle(detected.url);
+    return title || prettifyHostname(detected.hostname) || detected.url;
   }
   if (detected.type === "color") {
     return detected.color;
@@ -874,59 +861,30 @@ async function resolveTitle(detected) {
 
 async function fetchPageTitle(url) {
   try {
-    // Use AllOrigins CORS proxy to fetch the page
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      }
-    });
-    
-    if (!response.ok) throw new Error('Failed to fetch');
-    
-    const data = await response.json();
-    const html = data.contents;
-    
-    // Extract title from HTML
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    if (titleMatch && titleMatch[1]) {
-      return titleMatch[1].trim();
-    }
-    
-    // Try og:title as fallback
-    const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
-    if (ogTitleMatch && ogTitleMatch[1]) {
-      return ogTitleMatch[1].trim();
-    }
-    
-    return null;
+    const response = await fetch(`https://r.jina.ai/${url}`);
+    if (!response.ok) return null;
+    const text = await response.text();
+    const titleMatch = text.match(/<title[^>]*>(.*?)<\/title>/i);
+    return titleMatch
+      ? new DOMParser().parseFromString(titleMatch[1], "text/html").body
+          .textContent
+      : null;
   } catch (error) {
-    console.warn("Error fetching page title:", error);
+    console.warn("Unable to fetch page title", error);
     return null;
   }
 }
 
-async function updatePreview() {
+function updatePreview() {
   if (!ui.previewCard) return;
   const content = ui.bookmarkContent.value.trim();
   const detected = detectContent(content);
   const manualTitle = ui.bookmarkTitle.value.trim();
-  
+  const title = manualTitle || autoPreviewTitle(detected);
   const titleNode = ui.previewCard.querySelector(".preview-title");
   const metaNode = ui.previewCard.querySelector(".preview-meta");
   const icon = ui.previewCard.querySelector(".preview-icon");
   if (!titleNode || !metaNode || !icon) return;
-  
-  // Set initial title
-  let title = manualTitle;
-  if (!title && detected.type === "link") {
-    titleNode.textContent = "Loading title…";
-    title = await autoPreviewTitle(detected);
-  } else if (!title) {
-    title = detected.type === "color" ? detected.color : "Add a title";
-  }
-  
   titleNode.textContent = title;
   metaNode.textContent =
     detected.type === "link"
@@ -952,14 +910,9 @@ async function updatePreview() {
   }
 }
 
-async function autoPreviewTitle(detected) {
+function autoPreviewTitle(detected) {
   if (detected.type === "link") {
-    try {
-      const title = await fetchPageTitle(detected.url);
-      return title || prettifyHostname(detected.hostname) || "Loading title…";
-    } catch (error) {
-      return prettifyHostname(detected.hostname) || "Loading title…";
-    }
+    return prettifyHostname(detected.hostname) || "Loading title…";
   }
   if (detected.type === "color") {
     return detected.color;
@@ -977,6 +930,9 @@ function closeModal(id) {
   const modal = document.getElementById(id);
   if (!modal) return;
   modal.setAttribute("aria-hidden", "true");
+  if (id === "bookmarkModal") {
+    enterBookmarkCreateMode();
+  }
 }
 
 function formatDate(dateInput) {
