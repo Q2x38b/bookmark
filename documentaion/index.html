@@ -7,129 +7,261 @@
     <link rel="stylesheet" href="/styles/home.css" />
     <style>
       body {
-        max-width: 720px;
+        max-width: 960px;
         margin: 0 auto;
-        padding: 3rem 1.5rem;
-        font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI",
-          sans-serif;
+        padding: 3.5rem 1.5rem 4rem;
+        font-family: var(--font-geist-sans);
         color: var(--text-primary);
-        background: var(--background);
+        background: radial-gradient(
+            circle at top,
+            rgba(255, 255, 255, 0.05),
+            transparent 45%
+          ),
+          var(--background);
       }
-      h1 {
-        font-size: 1.75rem;
-        margin-bottom: 0.75rem;
+      .docs-hero {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        margin-bottom: 2.5rem;
       }
-      p {
+      .docs-eyebrow {
+        font-family: var(--font-geist-mono);
+        font-size: 0.7rem;
+        letter-spacing: 0.2em;
+        color: var(--text-secondary);
+      }
+      .docs-hero h1 {
+        font-size: clamp(2rem, 4vw, 2.6rem);
+        margin: 0;
+      }
+      .docs-hero p {
+        max-width: 46rem;
         color: var(--text-secondary);
         line-height: 1.6;
       }
-      section {
-        margin-top: 2rem;
+      .docs-panel {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 24px;
+        padding: 1.75rem;
+        margin-bottom: 2rem;
+        background: rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(8px);
       }
-      code {
-        padding: 0.1rem 0.35rem;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.08);
+      .docs-panel h2 {
+        font-size: 1rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-family: var(--font-geist-mono);
+        color: var(--text-secondary);
+        margin: 0 0 1rem;
+      }
+      .docs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+      .docs-card {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .docs-card strong {
+        display: block;
+        margin-bottom: 0.35rem;
+      }
+      .docs-card p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+      .table-scroll {
+        overflow-x: auto;
       }
       table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 1rem;
         font-size: 0.9rem;
+        border-radius: 18px;
+        overflow: hidden;
+      }
+      thead {
+        background: rgba(255, 255, 255, 0.05);
+        font-family: var(--font-geist-mono);
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        color: var(--text-secondary);
+        text-transform: uppercase;
       }
       th,
       td {
-        padding: 0.6rem;
-        border-bottom: 1px solid var(--border-color, #333);
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         text-align: left;
+        vertical-align: top;
       }
-      a {
-        color: var(--text-primary);
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+      tbody tr:nth-child(odd) {
+        background: rgba(255, 255, 255, 0.015);
+      }
+      code {
+        font-family: var(--font-geist-mono);
+        font-size: 0.8rem;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 0.15rem 0.4rem;
+        border-radius: 6px;
+      }
+      pre {
+        margin: 1rem 0 0;
+        padding: 1rem;
+        border-radius: 18px;
+        background: rgba(7, 7, 7, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        font-family: var(--font-geist-mono);
+        font-size: 0.85rem;
+        overflow-x: auto;
+      }
+      .docs-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+      .docs-list li {
+        position: relative;
+        padding-left: 1.2rem;
+      }
+      .docs-list li::before {
+        content: "›";
+        position: absolute;
+        left: 0;
+        color: var(--foreground);
+      }
+      .docs-tagline {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+        color: var(--text-secondary);
+      }
+      @media (max-width: 640px) {
+        body {
+          padding: 2.25rem 1.25rem 3rem;
+        }
+        .docs-panel {
+          padding: 1.25rem;
+          border-radius: 18px;
+        }
       }
     </style>
   </head>
   <body>
-    <header>
-      <a href="/" class="login-link" style="float: right">← Back</a>
+    <a href="/" class="login-link" style="float: right; margin-bottom: 0.5rem"
+      >← Back</a
+    >
+    <header class="docs-hero">
+      <p class="docs-eyebrow">Documentation</p>
       <h1>Bookmark URL Parameters</h1>
       <p>
-        Pass these parameters to <code>/</code> to pre-fill the capture
-        modal from browser extensions, share sheets, or automation tools.
+        Pipe data into BMarks from browser extensions, Shortcuts, or automation
+        tooling by sending query parameters to <code>/</code>. The capture modal
+        opens with everything pre-filled, even if you still need to sign in.
       </p>
+      <div class="docs-tagline">
+        <span>⌘ + D • 0→1 capture workflow</span>
+      </div>
     </header>
 
-    <section>
+    <section class="docs-panel">
+      <h2>Quick reference</h2>
+      <div class="docs-grid">
+        <article class="docs-card">
+          <strong>Works everywhere</strong>
+          <p>macOS share sheet, Raycast, Alfred, browser extensions, or curl.</p>
+        </article>
+        <article class="docs-card">
+          <strong>Autodetects content</strong>
+          <p>Links, color values, and notes are inferred instantly.</p>
+        </article>
+        <article class="docs-card">
+          <strong>Safe fallback</strong>
+          <p>Invalid payloads become plain text so nothing is lost.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="docs-panel">
       <h2>Supported parameters</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Param</th>
-            <th>Description</th>
-            <th>Example</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>content</code> (required)</td>
-            <td>
-              URL, hex color (e.g. <code>#ff00ff</code>), rgb() string, or plain
-              text.
-            </td>
-            <td><code>?content=https://example.com</code></td>
-          </tr>
-          <tr>
-            <td><code>title</code> (optional)</td>
-            <td>
-              Custom label. Links auto-fetch their page title; colors use the
-              literal code.
-            </td>
-            <td><code>&title=New%20Docs</code></td>
-          </tr>
-          <tr>
-            <td><code>group</code> (optional)</td>
-            <td>
-              Group name or UUID. If the group doesn’t exist it’s ignored and
-              you can choose one manually.
-            </td>
-            <td><code>&group=Research</code></td>
-          </tr>
-          <tr>
-            <td><code>new</code> (optional)</td>
-            <td>
-              When present (e.g. <code>new=1</code>), the modal opens even if no
-              other fields are sent.
-            </td>
-            <td><code>&new=1</code></td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 25%">Parameter</th>
+              <th style="width: 45%">Description</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>content</code> (required)</td>
+              <td>
+                URL, hex color (e.g. <code>#ff00ff</code>), rgb()/hsl() string,
+                or plain text.
+              </td>
+              <td><code>?content=https://example.com</code></td>
+            </tr>
+            <tr>
+              <td><code>title</code> (optional)</td>
+              <td>
+                Custom label. Links auto-fetch their page title; colors use the
+                literal code.
+              </td>
+              <td><code>&title=New%20Docs</code></td>
+            </tr>
+            <tr>
+              <td><code>group</code> (optional)</td>
+              <td>
+                Group name or UUID. If the group doesn’t exist it’s ignored and
+                you can choose one manually.
+              </td>
+              <td><code>&group=Research</code></td>
+            </tr>
+            <tr>
+              <td><code>new</code> (optional)</td>
+              <td>
+                When present (e.g. <code>new=1</code>), the modal opens even if
+                no other fields are sent.
+              </td>
+              <td><code>&new=1</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
-    <section>
+    <section class="docs-panel">
       <h2>Examples</h2>
-      <p>
-        <strong>Save a link:</strong><br />
-        <code>/?content=https://example.com/docs&title=Docs&group=Design</code>
-      </p>
-      <p>
-        <strong>Save a hex color:</strong><br />
-        <code>/?content=%23ffcc00&group=Palette</code>
-      </p>
-      <p>
-        <strong>Open empty modal:</strong><br />
-        <code>/?new=1</code>
-      </p>
+      <pre>/?content=https://example.com/docs&title=Docs&group=Design
+/?content=%23ffcc00&group=Palette
+/?new=1</pre>
     </section>
 
-    <section>
+    <section class="docs-panel">
       <h2>Behavior notes</h2>
-      <ul>
+      <ul class="docs-list">
+        <li>Parameters are consumed once and scrubbed from the URL.</li>
         <li>
-          Parameters are consumed once and scrubbed from the URL automatically.
-        </li>
-        <li>
-          If you’re not signed in, the payload is cached for 10 minutes and
-          replayed right after auth completes.
+          Not signed in? Payloads are cached for 10 minutes then replayed after
+          auth finishes.
         </li>
         <li>
           Invalid URLs or color strings fall back to plain text and require a
