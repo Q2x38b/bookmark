@@ -213,64 +213,100 @@
       </div>
     </section>
 
-    <div class="modal" id="bookmarkModal" aria-hidden="true">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title">Add Bookmark</h2>
-          <button type="button" class="modal-close" data-close-modal aria-label="Close">
-            <svg width="20" height="20" viewBox="0 0 20 20">
-              <path d="M15 5L5 15M5 5l10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
-          </button>
-        </div>
+      <div class="modal" id="bookmarkModal" aria-hidden="true" data-preview-type="text">
+        <div class="modal-content bookmark-composer">
+          <div class="composer-grid">
+            <div class="composer-panel">
+              <div class="modal-header composer-header">
+                <div>
+                  <p class="modal-eyebrow">Quick capture</p>
+                  <h2 class="modal-title">Create bookmark</h2>
+                  <p class="composer-subtitle">
+                    Drop in a link, color swatch, or note — we’ll autodetect the format.
+                  </p>
+                </div>
+                <button type="button" class="modal-close" data-close-modal aria-label="Close">
+                  <svg width="20" height="20" viewBox="0 0 20 20">
+                    <path d="M15 5L5 15M5 5l10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                  </svg>
+                </button>
+              </div>
 
-        <form id="bookmarkForm" class="modal-body">
-          <div class="form-group">
-            <label class="form-label" for="bookmarkContent">Content</label>
-            <textarea
-              id="bookmarkContent"
-              class="form-textarea"
-              name="content"
-              rows="3"
-              placeholder="Paste a link, #color, or text..."
-              required
-            ></textarea>
-          </div>
+              <div class="composer-badges">
+                <span class="composer-badge" data-preview-badge="link">Link</span>
+                <span class="composer-badge" data-preview-badge="color">Color</span>
+                <span class="composer-badge" data-preview-badge="text">Note</span>
+              </div>
 
-          <div class="form-group">
-            <label class="form-label" for="bookmarkTitle">Title (optional)</label>
-            <input
-              id="bookmarkTitle"
-              class="form-input"
-              name="title"
-              placeholder="Auto-fills for links"
-            />
-          </div>
+              <form id="bookmarkForm" class="modal-body composer-body">
+                <div class="form-group">
+                  <label class="form-label" for="bookmarkContent">Content</label>
+                  <div class="composer-field">
+                    <textarea
+                      id="bookmarkContent"
+                      class="form-textarea"
+                      name="content"
+                      rows="3"
+                      placeholder="Paste a link, #color, or text..."
+                      required
+                    ></textarea>
+                    <button type="button" class="ghost-chip" id="pasteBookmarkContent">Paste</button>
+                  </div>
+                </div>
 
-          <div class="form-group">
-            <label class="form-label" for="bookmarkGroup">Group</label>
-            <select id="bookmarkGroup" class="form-select" name="group">
-              <option value="">No group</option>
-            </select>
-          </div>
+                <div class="composer-row">
+                  <div class="form-group">
+                    <label class="form-label" for="bookmarkTitle">Title (optional)</label>
+                    <input
+                      id="bookmarkTitle"
+                      class="form-input"
+                      name="title"
+                      placeholder="Auto-fills for links"
+                    />
+                  </div>
 
-          <div class="preview-card" id="previewCard">
-            <div class="preview-icon"></div>
-            <div class="preview-details">
-              <p class="preview-title">Your bookmark title</p>
-              <p class="preview-meta">Preview</p>
+                  <div class="form-group">
+                    <label class="form-label" for="bookmarkGroup">Group</label>
+                    <select id="bookmarkGroup" class="form-select" name="group">
+                      <option value="">No group</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="composer-helpers">
+                  <button type="button" class="ghost-chip tertiary" id="bookmarkFormReset">Clear</button>
+                  <p>Titles auto-fill for links but you can override them anytime.</p>
+                </div>
+
+                <div class="modal-actions composer-actions">
+                  <button type="submit" class="btn-primary" id="bookmarkSubmitButton">Save Bookmark</button>
+                  <button type="button" class="btn-danger is-hidden" id="deleteBookmarkButton">
+                    Delete Bookmark
+                  </button>
+                </div>
+              </form>
             </div>
-          </div>
 
-          <div class="modal-actions">
-            <button type="submit" class="btn-primary" id="bookmarkSubmitButton">Save Bookmark</button>
-            <button type="button" class="btn-danger is-hidden" id="deleteBookmarkButton">
-              Delete Bookmark
-            </button>
+            <aside class="composer-preview-panel">
+              <span class="preview-pill">Live preview</span>
+              <div class="preview-card" id="previewCard">
+                <div class="preview-icon"></div>
+                <div class="preview-details">
+                  <p class="preview-title">Your bookmark title</p>
+                  <p class="preview-meta">Preview</p>
+                </div>
+              </div>
+              <ul class="preview-tips">
+                <li>Swipe left on mobile to delete, right to edit.</li>
+                <li>Groups keep work, inspo, and palette notes separate.</li>
+                <li>
+                  Keyboard shortcut <kbd>⌘</kbd><kbd>K</kbd> jumps to search instantly.
+                </li>
+              </ul>
+            </aside>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
 
     <div class="modal" id="accountModal" aria-hidden="true">
       <div class="modal-content">

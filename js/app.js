@@ -24,6 +24,12 @@ const PENDING_BOOKMARK_TTL = 1000 * 60 * 10; // 10 minutes
 const LANDING_PATH = "/";
 const supportsBroadcast =
   typeof window !== "undefined" && "BroadcastChannel" in window;
+const supportsSwipeInteractions =
+  typeof window !== "undefined" &&
+  (window.matchMedia?.("(pointer: coarse)")?.matches ||
+    navigator.maxTouchPoints > 0);
+const canUsePointerEvents =
+  typeof window !== "undefined" && "PointerEvent" in window;
 const SESSION_CACHE_KEY = "bmarks.session";
 const hasStorage =
   typeof window !== "undefined" && "localStorage" in window;
@@ -82,24 +88,26 @@ const ui = {
   bookmarkModal: document.getElementById("bookmarkModal"),
   accountModal: document.getElementById("accountModal"),
   bookmarkForm: document.getElementById("bookmarkForm"),
-  bookmarkContent: document.getElementById("bookmarkContent"),
-  bookmarkTitle: document.getElementById("bookmarkTitle"),
-  previewCard: document.getElementById("previewCard"),
-  saveBookmarkButton: document.getElementById("bookmarkSubmitButton"),
-  deleteBookmarkButton: document.getElementById("deleteBookmarkButton"),
-  docsButton: document.getElementById("docsBtn"),
-  userChip: document.getElementById("userChip"),
-  userMenu: document.getElementById("userMenu"),
-  userAvatar: document.getElementById("userAvatar"),
-  userName: document.getElementById("userName"),
-  userEmail: document.getElementById("userEmail"),
-  menuUserEmail: document.getElementById("menuUserEmail"),
-  accountSettingsBtn: document.getElementById("accountSettingsBtn"),
-  signOutBtn: document.getElementById("signOutBtn"),
-  accountForm: document.getElementById("accountForm"),
-  displayNameInput: document.getElementById("displayNameInput"),
-  accountInfo: document.getElementById("accountInfo"),
-  copyToast: document.getElementById("copyToast"),
+    bookmarkContent: document.getElementById("bookmarkContent"),
+    bookmarkTitle: document.getElementById("bookmarkTitle"),
+    previewCard: document.getElementById("previewCard"),
+    saveBookmarkButton: document.getElementById("bookmarkSubmitButton"),
+    deleteBookmarkButton: document.getElementById("deleteBookmarkButton"),
+    docsButton: document.getElementById("docsBtn"),
+    userChip: document.getElementById("userChip"),
+    userMenu: document.getElementById("userMenu"),
+    userAvatar: document.getElementById("userAvatar"),
+    userName: document.getElementById("userName"),
+    userEmail: document.getElementById("userEmail"),
+    menuUserEmail: document.getElementById("menuUserEmail"),
+    accountSettingsBtn: document.getElementById("accountSettingsBtn"),
+    signOutBtn: document.getElementById("signOutBtn"),
+    accountForm: document.getElementById("accountForm"),
+    displayNameInput: document.getElementById("displayNameInput"),
+    accountInfo: document.getElementById("accountInfo"),
+    copyToast: document.getElementById("copyToast"),
+    pasteBookmarkButton: document.getElementById("pasteBookmarkContent"),
+    bookmarkFormReset: document.getElementById("bookmarkFormReset"),
 };
 
 init();
@@ -191,26 +199,27 @@ function attachAuthGuards() {
     }
   });
 
-  if (authBroadcast) {
-    authBroadcast.addEventListener("message", ({ data }) => {
-      if (data?.type !== "auth") return;
-      if (!data.hasSession) {
-        redirectToLanding();
-      } else {
-        refreshSession({ allowWait: true });
-      }
-    });
-  }
+    if (authBroadcast) {
+      authBroadcast.addEventListener("message", ({ data }) => {
+        if (data?.type !== "auth") return;
+        refreshSession({
+          allowWait: true,
+          redirectOnFailure: data.hasSession === false,
+        });
+      });
+    }
 
-  window.addEventListener("focus", () => refreshSession({ allowWait: true }));
+    window.addEventListener("focus", () =>
+      refreshSession({ allowWait: true, redirectOnFailure: false })
+    );
 
-  if (AUTH_STORAGE_KEY) {
-    window.addEventListener("storage", (event) => {
-      if (event.key === AUTH_STORAGE_KEY) {
-        refreshSession({ allowWait: true });
-      }
-    });
-  }
+    if (AUTH_STORAGE_KEY) {
+      window.addEventListener("storage", (event) => {
+        if (event.key === AUTH_STORAGE_KEY) {
+          refreshSession({ allowWait: true, redirectOnFailure: false });
+        }
+      });
+    }
 }
 
 function broadcastAuthState(hasSession) {
@@ -218,7 +227,7 @@ function broadcastAuthState(hasSession) {
 }
 
 async function refreshSession(options = {}) {
-  const { allowWait = true } = options;
+  const { allowWait = true, redirectOnFailure = true } = options;
   let session = await fetchSession();
 
   if (!session && allowWait) {
@@ -226,9 +235,11 @@ async function refreshSession(options = {}) {
   }
 
   if (!session) {
-    state.session = null;
-    clearCachedSession();
-    redirectToLanding();
+    if (redirectOnFailure) {
+      state.session = null;
+      clearCachedSession();
+      redirectToLanding();
+    }
     return null;
   }
 
@@ -357,6 +368,15 @@ function bindGlobalEvents() {
     ui.bookmarkContent?.focus();
   });
 
+  ui.pasteBookmarkButton?.addEventListener("click", handlePasteBookmarkContent);
+
+  ui.bookmarkFormReset?.addEventListener("click", () => {
+    ui.bookmarkForm?.reset();
+    enterBookmarkCreateMode();
+    updatePreview();
+    ui.bookmarkContent?.focus();
+  });
+
   ui.userChip?.addEventListener("click", () => {
     const isOpen = ui.userMenu?.getAttribute("data-open") === "true";
     toggleUserMenu(!isOpen);
@@ -403,7 +423,10 @@ function bindGlobalEvents() {
 
   ui.bookmarkForm?.addEventListener("submit", handleBookmarkSubmit);
   ui.bookmarkContent?.addEventListener("input", updatePreview);
-  ui.bookmarkTitle?.addEventListener("input", updatePreview);
+  ui.bookmarkTitle?.addEventListener("input", () => {
+    ui.bookmarkTitle?.setCustomValidity("");
+    updatePreview();
+  });
   ui.deleteBookmarkButton?.addEventListener("click", handleBookmarkDelete);
   ui.confirmDeleteGroupButton?.addEventListener("click", confirmDeleteGroup);
   ui.confirmDeleteBookmarkButton?.addEventListener(
@@ -432,6 +455,10 @@ function bindGlobalEvents() {
     }
     if (event.target.closest("a")) return;
     const row = event.target.closest(".bookmark-row");
+    if (row?.dataset.swipeCancelClick === "true") {
+      event.stopPropagation();
+      return;
+    }
     if (!row?.dataset.bookmarkId) return;
     const visibleIndex = Number(row.dataset.visibleIndex ?? -1);
     if (!Number.isNaN(visibleIndex) && visibleIndex >= 0) {
@@ -853,6 +880,7 @@ function renderBookmarks() {
     .map((bookmark, index) => renderBookmarkRow(bookmark, index))
     .join("");
   updateBookmarkFocusVisuals();
+  enableBookmarkSwipe();
 }
 
 function renderBookmarkRow(bookmark, visibleIndex) {
@@ -883,34 +911,40 @@ function renderBookmarkRow(bookmark, visibleIndex) {
       data-bookmark-id="${bookmark.id}"
       data-visible-index="${visibleIndex}"
     >
-      <div class="bookmark-main">
-        ${iconMarkup}
-        <div class="bookmark-copy">
-          <div class="bookmark-line">${titleMarkup}${metaInline}</div>
+        <div class="swipe-backdrop" aria-hidden="true">
+          <div class="swipe-pill edit">Edit</div>
+          <div class="swipe-pill delete">Delete</div>
         </div>
-      </div>
-      <div class="bookmark-side">
-        <div class="bookmark-actions">
-          <button
-            type="button"
-            class="bookmark-action edit"
-            data-action="edit"
-            data-bookmark-id="${bookmark.id}"
-            aria-label="Edit bookmark"
-          >
-            ✎
-          </button>
-          <button
-            type="button"
-            class="bookmark-action delete"
-            data-action="delete"
-            data-bookmark-id="${bookmark.id}"
-            aria-label="Delete bookmark"
-          >
-            ×
-          </button>
-        </div>
-        <time class="bookmark-date">${formatDate(bookmark.created_at)}</time>
+        <div class="bookmark-card">
+          <div class="bookmark-main">
+            ${iconMarkup}
+            <div class="bookmark-copy">
+              <div class="bookmark-line">${titleMarkup}${metaInline}</div>
+            </div>
+          </div>
+          <div class="bookmark-side">
+            <div class="bookmark-actions">
+              <button
+                type="button"
+                class="bookmark-action edit"
+                data-action="edit"
+                data-bookmark-id="${bookmark.id}"
+                aria-label="Edit bookmark"
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                class="bookmark-action delete"
+                data-action="delete"
+                data-bookmark-id="${bookmark.id}"
+                aria-label="Delete bookmark"
+              >
+                ×
+              </button>
+            </div>
+            <time class="bookmark-date">${formatDate(bookmark.created_at)}</time>
+          </div>
       </div>
     </li>
   `;
@@ -948,6 +982,213 @@ function focusSearchInput(select = false) {
   if (select && typeof ui.searchInput.select === "function") {
     ui.searchInput.select();
   }
+}
+
+function enableBookmarkSwipe() {
+  if (!supportsSwipeInteractions) return;
+  if (!ui.bookmarkList) return;
+  const rows = ui.bookmarkList.querySelectorAll(".bookmark-row");
+  rows.forEach((row) => attachSwipeHandlers(row));
+}
+
+function attachSwipeHandlers(row) {
+  if (row.dataset.swipeBound === "true") return;
+  const card = row.querySelector(".bookmark-card");
+  if (!card) return;
+  row.dataset.swipeBound = "true";
+  const maxOffset = 110;
+  const triggerThreshold = 80;
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let currentOffset = 0;
+  let isActiveSwipe = false;
+
+  const resetGesture = (options = {}) => {
+    const { canceled = false } = options;
+    if (!canceled) {
+      finalizeSwipe(row, currentOffset, {
+        threshold: triggerThreshold,
+        hadSwipe: isActiveSwipe,
+      });
+    }
+    pointerId = null;
+    startX = 0;
+    startY = 0;
+    currentOffset = 0;
+    isActiveSwipe = false;
+    row.classList.remove("is-swiping");
+    applySwipeOffset(row, 0);
+  };
+
+  const startGesture = (x, y, id = null) => {
+    pointerId = id;
+    startX = x;
+    startY = y;
+    currentOffset = 0;
+    isActiveSwipe = false;
+    row.classList.add("is-swiping");
+  };
+
+  const moveGesture = (x, y) => {
+    const deltaX = x - startX;
+    const deltaY = y - startY;
+    if (!isActiveSwipe) {
+      if (Math.abs(deltaX) < 8 || Math.abs(deltaX) < Math.abs(deltaY)) {
+        return;
+      }
+      isActiveSwipe = true;
+    }
+    currentOffset = clamp(deltaX, -maxOffset, maxOffset);
+    applySwipeOffset(row, currentOffset);
+  };
+
+  if (canUsePointerEvents) {
+    row.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (!shouldHandleSwipePointer(event)) return;
+        row.setPointerCapture?.(event.pointerId);
+        startGesture(event.clientX, event.clientY, event.pointerId);
+      },
+      { passive: true }
+    );
+
+    row.addEventListener(
+      "pointermove",
+      (event) => {
+        if (pointerId !== event.pointerId || pointerId == null) return;
+        moveGesture(event.clientX, event.clientY);
+        if (isActiveSwipe) {
+          event.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+
+    row.addEventListener(
+      "pointerup",
+      (event) => {
+        if (pointerId !== event.pointerId || pointerId == null) return;
+        resetGesture();
+        row.releasePointerCapture?.(event.pointerId);
+      },
+      { passive: true }
+    );
+
+    row.addEventListener(
+      "pointercancel",
+      (event) => {
+        if (pointerId !== event.pointerId || pointerId == null) return;
+        resetGesture({ canceled: true });
+      },
+      { passive: true }
+    );
+  } else {
+    row.addEventListener(
+      "touchstart",
+      (event) => {
+        if (event.touches.length !== 1) return;
+        const touch = event.touches[0];
+        startGesture(touch.clientX, touch.clientY, touch.identifier);
+      },
+      { passive: true }
+    );
+
+    row.addEventListener(
+      "touchmove",
+      (event) => {
+        if (pointerId == null) return;
+        const touch = [...event.touches].find(
+          (entry) => entry.identifier === pointerId
+        );
+        if (!touch) return;
+        moveGesture(touch.clientX, touch.clientY);
+        if (isActiveSwipe) {
+          event.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+
+    const handleTouchEnd = (event, canceled = false) => {
+      if (pointerId == null) return;
+      const ended = [...event.changedTouches].some(
+        (entry) => entry.identifier === pointerId
+      );
+      if (!ended) return;
+      resetGesture({ canceled });
+    };
+
+    row.addEventListener(
+      "touchend",
+      (event) => handleTouchEnd(event, false),
+      { passive: true }
+    );
+    row.addEventListener(
+      "touchcancel",
+      (event) => handleTouchEnd(event, true),
+      { passive: true }
+    );
+  }
+}
+
+function applySwipeOffset(row, offset) {
+  row.style.setProperty("--swipe-offset", `${offset}px`);
+  const intensity = Math.min(1, Math.abs(offset) / 100);
+  row.style.setProperty("--swipe-intensity", intensity.toFixed(2));
+  if (offset > 2) {
+    row.dataset.swipeDirection = "right";
+  } else if (offset < -2) {
+    row.dataset.swipeDirection = "left";
+  } else {
+    row.dataset.swipeDirection = "";
+  }
+  if (intensity > 0.05) {
+    row.classList.add("swipe-active");
+  } else {
+    row.classList.remove("swipe-active");
+  }
+}
+
+function finalizeSwipe(row, offset, options = {}) {
+  const { threshold = 80, hadSwipe = false } = options;
+  if (!hadSwipe) return null;
+  let action = null;
+  if (offset <= -threshold) {
+    action = "delete";
+  } else if (offset >= threshold) {
+    action = "edit";
+  }
+  if (action) {
+    row.dataset.swipeCancelClick = "true";
+    setTimeout(() => {
+      delete row.dataset.swipeCancelClick;
+    }, 220);
+    triggerSwipeAction(row, action);
+  }
+  row.classList.remove("swipe-active");
+  row.dataset.swipeDirection = "";
+  row.style.setProperty("--swipe-intensity", "0");
+  return action;
+}
+
+function triggerSwipeAction(row, action) {
+  const bookmarkId = row.dataset.bookmarkId;
+  if (!bookmarkId) return;
+  const bookmark = state.bookmarks.find((entry) => entry.id === bookmarkId);
+  if (!bookmark) return;
+  if (action === "edit") {
+    startEditingBookmark(bookmark);
+  } else if (action === "delete") {
+    promptDeleteBookmark(bookmark);
+  }
+}
+
+function shouldHandleSwipePointer(event) {
+  if (!supportsSwipeInteractions) return false;
+  if (!canUsePointerEvents) return true;
+  return event.pointerType === "touch" || event.pointerType === "pen";
 }
 
 function showLandingView() {
@@ -1032,6 +1273,29 @@ async function copyBookmarkContent(bookmark) {
     showCopyToast("Copied to clipboard");
   } catch (error) {
     console.warn("Unable to copy bookmark content", error);
+  }
+}
+
+async function handlePasteBookmarkContent() {
+  if (!navigator.clipboard?.readText) {
+    showCopyToast("Clipboard access is blocked");
+    return;
+  }
+  try {
+    const pasted = await navigator.clipboard.readText();
+    if (!pasted) {
+      showCopyToast("Clipboard is empty");
+      return;
+    }
+    if (ui.bookmarkContent) {
+      ui.bookmarkContent.value = pasted;
+    }
+    updatePreview();
+    ui.bookmarkContent?.focus();
+    showCopyToast("Pasted from clipboard");
+  } catch (error) {
+    console.warn("Unable to paste from clipboard", error);
+    showCopyToast("Clipboard unavailable");
   }
 }
 
@@ -1251,6 +1515,9 @@ function updatePreview() {
   const metaNode = ui.previewCard.querySelector(".preview-meta");
   const icon = ui.previewCard.querySelector(".preview-icon");
   if (!titleNode || !metaNode || !icon) return;
+  if (ui.bookmarkModal) {
+    ui.bookmarkModal.dataset.previewType = detected.type;
+  }
   titleNode.textContent = title;
   metaNode.textContent =
     detected.type === "link"
@@ -1350,6 +1617,10 @@ function safeHostname(url = "") {
 
 function prettifyHostname(hostname = "") {
   return hostname.replace(/^www\./, "");
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function resolveFaviconUrl(link = "") {
