@@ -303,9 +303,9 @@ a {
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-family: var(--font-geist-mono);
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-family: var(--font-satoshi);
+  font-size: 0.875rem;
+  font-weight: 500;
   text-align: left;
   border-radius: 8px;
   cursor: pointer;
@@ -636,9 +636,11 @@ a {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  display: block;
+}
+
+.bookmark-row + .bookmark-row {
+  margin-top: 0.35rem;
 }
 
 .app-view .bookmark-list {
@@ -681,6 +683,9 @@ a {
   position: relative;
   border-radius: 10px;
   overflow: hidden;
+  display: block;
+  width: 100%;
+  min-height: 52px;
 }
 
 .bookmark-card {
@@ -695,6 +700,7 @@ a {
   cursor: pointer;
   will-change: transform;
   transform: translateX(var(--swipe-offset, 0px));
+  width: 100%;
 }
 
 .bookmark-row.is-swiping .bookmark-card {
@@ -786,19 +792,51 @@ a {
 }
 
 .bookmark-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .bookmark-icon img {
-  width: 16px;
-  height: 16px;
+  width: 70%;
+  height: 70%;
   object-fit: contain;
+  display: block;
+}
+
+.bookmark-icon--link {
+  font-family: var(--font-geist-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bookmark-icon-fallback {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.bookmark-icon--link.show-fallback .bookmark-icon-fallback {
+  display: flex;
+}
+
+.bookmark-icon--link.has-favicon .bookmark-icon-fallback {
+  display: none;
+}
+
+.bookmark-icon--link.show-fallback img {
+  display: none;
 }
 
 .bookmark-copy {
