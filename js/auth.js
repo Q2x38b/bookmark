@@ -24,7 +24,7 @@ async function ensureNoActiveSession() {
     data: { session },
   } = await supabase.auth.getSession();
   if (session) {
-    window.location.replace("home.html");
+    window.location.replace("/home");
   }
 }
 
@@ -44,7 +44,7 @@ async function handleGoogleAuth() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/home.html`,
+      redirectTo: `${window.location.origin}/home`,
       queryParams: {
         access_type: "offline",
         prompt: "consent",
@@ -60,7 +60,7 @@ async function handleGoogleAuth() {
 
 supabase.auth.onAuthStateChange((event, session) => {
   if (session) {
-    window.location.replace("home.html");
+    window.location.replace("/home");
   } else if (event === "SIGNED_OUT") {
     authButton?.removeAttribute("disabled");
   }

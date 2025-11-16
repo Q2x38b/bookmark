@@ -38,6 +38,7 @@ const state = {
   session: null,
   groups: [],
   bookmarks: [],
+  visibleBookmarks: [],
   filters: {
     search: "",
     groupId: null,
@@ -48,6 +49,8 @@ const state = {
   isLoadingBookmarks: false,
   bookmarkLoadError: null,
   isSavingBookmark: false,
+  pendingBookmarkDeleteId: null,
+  focusedBookmarkIndex: -1,
 };
 
 const ui = {
@@ -65,6 +68,10 @@ const ui = {
   groupDeleteName: document.getElementById("groupDeleteName"),
   confirmDeleteGroupButton: document.getElementById(
     "confirmDeleteGroupButton"
+  ),
+  bookmarkDeleteName: document.getElementById("bookmarkDeleteName"),
+  confirmDeleteBookmarkButton: document.getElementById(
+    "confirmDeleteBookmarkButton"
   ),
   activeGroupLabel: document.getElementById("activeGroupLabel"),
   groupSelect: document.getElementById("bookmarkGroup"),
@@ -180,17 +187,17 @@ function attachAuthGuards() {
       if (!data.hasSession) {
         redirectToLanding();
       } else {
-        refreshSession();
+        refreshSession({ allowWait: true });
       }
     });
   }
 
-  window.addEventListener("focus", () => refreshSession());
+  window.addEventListener("focus", () => refreshSession({ allowWait: true }));
 
   if (AUTH_STORAGE_KEY) {
     window.addEventListener("storage", (event) => {
       if (event.key === AUTH_STORAGE_KEY) {
-        refreshSession();
+        refreshSession({ allowWait: true });
       }
     });
   }
@@ -200,8 +207,13 @@ function broadcastAuthState(hasSession) {
   authBroadcast?.postMessage({ type: "auth", hasSession });
 }
 
-async function refreshSession() {
-  const session = await fetchSession();
+async function refreshSession(options = {}) {
+  const { allowWait = true } = options;
+  let session = await fetchSession();
+
+  if (!session && allowWait) {
+    session = await waitForInitialSession(2000);
+  }
 
   if (!session) {
     state.session = null;
@@ -315,12 +327,14 @@ function bindGlobalEvents() {
 
   ui.searchInput?.addEventListener("input", (event) => {
     state.filters.search = event.target.value.toLowerCase();
+    state.focusedBookmarkIndex = -1;
     renderBookmarks();
   });
 
   ui.clearSearchButton?.addEventListener("click", () => {
     state.filters.search = "";
     if (ui.searchInput) ui.searchInput.value = "";
+    state.focusedBookmarkIndex = -1;
     renderBookmarks();
   });
 
@@ -381,16 +395,26 @@ function bindGlobalEvents() {
   ui.bookmarkTitle?.addEventListener("input", updatePreview);
   ui.deleteBookmarkButton?.addEventListener("click", handleBookmarkDelete);
   ui.confirmDeleteGroupButton?.addEventListener("click", confirmDeleteGroup);
+  ui.confirmDeleteBookmarkButton?.addEventListener(
+    "click",
+    confirmDeleteBookmark
+  );
   ui.bookmarkList?.addEventListener("click", (event) => {
     const actionButton = event.target.closest(".bookmark-action");
     if (actionButton) {
       const id = actionButton.dataset.bookmarkId;
       if (!id) return;
+      const row = actionButton.closest(".bookmark-row");
+      const visibleIndex = Number(row?.dataset.visibleIndex ?? -1);
+      if (!Number.isNaN(visibleIndex) && visibleIndex >= 0) {
+        setFocusedBookmarkIndex(visibleIndex);
+      }
+      const bookmark = state.bookmarks.find((entry) => entry.id === id);
+      if (!bookmark) return;
       if (actionButton.dataset.action === "edit") {
-        const bookmark = state.bookmarks.find((entry) => entry.id === id);
-        if (bookmark) startEditingBookmark(bookmark);
+        startEditingBookmark(bookmark);
       } else if (actionButton.dataset.action === "delete") {
-        handleInlineBookmarkDelete(id);
+        promptDeleteBookmark(bookmark);
       }
       event.stopPropagation();
       return;
@@ -398,9 +422,13 @@ function bindGlobalEvents() {
     if (event.target.closest("a")) return;
     const row = event.target.closest(".bookmark-row");
     if (!row?.dataset.bookmarkId) return;
-    const bookmark = state.bookmarks.find(
-      (entry) => entry.id === row.dataset.bookmarkId
-    );
+    const visibleIndex = Number(row.dataset.visibleIndex ?? -1);
+    if (!Number.isNaN(visibleIndex) && visibleIndex >= 0) {
+      setFocusedBookmarkIndex(visibleIndex);
+    }
+    const bookmark =
+      state.visibleBookmarks[visibleIndex] ||
+      state.bookmarks.find((entry) => entry.id === row.dataset.bookmarkId);
     if (bookmark) {
       copyBookmarkContent(bookmark);
     }
@@ -421,6 +449,50 @@ function bindGlobalEvents() {
     }
   });
 
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const hasOpenModal = document.querySelector(".modal[aria-hidden='false']");
+    if (hasOpenModal) return;
+    if (!state.visibleBookmarks.length && event.key === "ArrowDown") return;
+
+    if (event.key === "ArrowDown") {
+      if (document.activeElement === ui.searchInput) {
+        event.preventDefault();
+        const nextIndex =
+          state.focusedBookmarkIndex >= 0
+            ? Math.min(
+                state.focusedBookmarkIndex + 1,
+                state.visibleBookmarks.length - 1
+              )
+            : 0;
+        setFocusedBookmarkIndex(nextIndex, { scrollIntoView: true });
+        return;
+      }
+      if (state.focusedBookmarkIndex >= 0) {
+        event.preventDefault();
+        const nextIndex = Math.min(
+          state.focusedBookmarkIndex + 1,
+          state.visibleBookmarks.length - 1
+        );
+        setFocusedBookmarkIndex(nextIndex, { scrollIntoView: true });
+      }
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      if (state.focusedBookmarkIndex > 0) {
+        event.preventDefault();
+        setFocusedBookmarkIndex(state.focusedBookmarkIndex - 1, {
+          scrollIntoView: true,
+        });
+      } else if (state.focusedBookmarkIndex === 0) {
+        event.preventDefault();
+        setFocusedBookmarkIndex(-1);
+        focusSearchInput(true);
+      }
+    }
+  });
+
   updatePreview();
   enterBookmarkCreateMode();
 
@@ -429,10 +501,6 @@ function bindGlobalEvents() {
   );
   document.getElementById("shortcutsBtn")?.addEventListener("click", () =>
     window.alert("Keyboard shortcuts coming soon.")
-  );
-  ui.docsButton?.addEventListener(
-    "click",
-    () => (window.location.href = "docs.html")
   );
   ui.confirmDeleteGroupButton?.addEventListener("click", confirmDeleteGroup);
 }
@@ -536,6 +604,7 @@ function renderGroups() {
           return;
         }
         state.filters.groupId = groupId;
+        state.focusedBookmarkIndex = -1;
         state.groupDeleteMode = false;
         ui.activeGroupLabel.textContent =
           state.groups.find((group) => group.id === groupId)?.name ||
@@ -609,11 +678,32 @@ async function confirmDeleteGroup() {
     state.filters.groupId = null;
     ui.activeGroupLabel.textContent = "All bookmarks";
   }
+  state.focusedBookmarkIndex = -1;
   state.groupDeleteMode = false;
   state.pendingGroupDeleteId = null;
   renderGroups();
   renderBookmarks();
   closeModal("deleteGroupModal");
+}
+
+function promptDeleteBookmark(bookmark) {
+  state.pendingBookmarkDeleteId = bookmark.id;
+  if (ui.bookmarkDeleteName) {
+    ui.bookmarkDeleteName.textContent =
+      bookmark.title || bookmark.content.slice(0, 80);
+  }
+  openModal("deleteBookmarkModal");
+}
+
+async function confirmDeleteBookmark() {
+  const bookmarkId = state.pendingBookmarkDeleteId;
+  if (!bookmarkId) {
+    closeModal("deleteBookmarkModal");
+    return;
+  }
+  await deleteBookmarkById(bookmarkId);
+  state.pendingBookmarkDeleteId = null;
+  closeModal("deleteBookmarkModal");
 }
 
 async function createGroup(name) {
@@ -678,6 +768,7 @@ function normalizeBookmark(raw) {
 function renderBookmarks() {
   if (!ui.bookmarkList) return;
   if (state.isLoadingBookmarks) {
+    state.visibleBookmarks = [];
     ui.bookmarkList.innerHTML = `
       <li class="loading-state">
         <span class="spinner"></span>
@@ -686,6 +777,7 @@ function renderBookmarks() {
     return;
   }
   if (state.bookmarkLoadError) {
+    state.visibleBookmarks = [];
     ui.bookmarkList.innerHTML = `<li class="empty-state"><p>${state.bookmarkLoadError}</p></li>`;
     return;
   }
@@ -708,17 +800,28 @@ function renderBookmarks() {
     return haystack.includes(search);
   });
 
+  state.visibleBookmarks = filtered;
+
   if (!filtered.length) {
+    state.focusedBookmarkIndex = -1;
     ui.bookmarkList.innerHTML = `<li class="empty-state"><p>No bookmarks yet. Tap + to add your first one.</p></li>`;
     return;
   }
 
+  if (
+    state.focusedBookmarkIndex >= filtered.length ||
+    state.focusedBookmarkIndex < -1
+  ) {
+    state.focusedBookmarkIndex = -1;
+  }
+
   ui.bookmarkList.innerHTML = filtered
-    .map((bookmark) => renderBookmarkRow(bookmark))
+    .map((bookmark, index) => renderBookmarkRow(bookmark, index))
     .join("");
+  updateBookmarkFocusVisuals();
 }
 
-function renderBookmarkRow(bookmark) {
+function renderBookmarkRow(bookmark, visibleIndex) {
   const iconMarkup = createIconMarkup(bookmark);
   const url = bookmark.url || (bookmark.type === "link" ? bookmark.content : "");
   const domain = url ? safeHostname(url) : "";
@@ -741,7 +844,11 @@ function renderBookmarkRow(bookmark) {
           bookmark.title || "Saved note"
         )}</p>`;
   return `
-    <li class="bookmark-row" data-bookmark-id="${bookmark.id}">
+    <li
+      class="bookmark-row"
+      data-bookmark-id="${bookmark.id}"
+      data-visible-index="${visibleIndex}"
+    >
       <div class="bookmark-main">
         ${iconMarkup}
         <div class="bookmark-copy">
@@ -773,6 +880,40 @@ function renderBookmarkRow(bookmark) {
       </div>
     </li>
   `;
+}
+
+function setFocusedBookmarkIndex(index, options = {}) {
+  const clamped =
+    index < -1
+      ? -1
+      : Math.min(index, state.visibleBookmarks.length - 1);
+  state.focusedBookmarkIndex = clamped;
+  updateBookmarkFocusVisuals({
+    scrollIntoView: options.scrollIntoView,
+  });
+}
+
+function updateBookmarkFocusVisuals({ scrollIntoView = false } = {}) {
+  if (!ui.bookmarkList) return;
+  const rows = ui.bookmarkList.querySelectorAll(".bookmark-row");
+  rows.forEach((row, index) => {
+    if (index === state.focusedBookmarkIndex) {
+      row.classList.add("is-focused");
+      if (scrollIntoView) {
+        row.scrollIntoView({ block: "nearest" });
+      }
+    } else {
+      row.classList.remove("is-focused");
+    }
+  });
+}
+
+function focusSearchInput(select = false) {
+  if (!ui.searchInput) return;
+  ui.searchInput.focus();
+  if (select && typeof ui.searchInput.select === "function") {
+    ui.searchInput.select();
+  }
 }
 
 function enterBookmarkCreateMode() {
@@ -810,18 +951,11 @@ async function deleteBookmarkById(bookmarkId) {
   if (state.editingBookmarkId === bookmarkId) {
     state.editingBookmarkId = null;
   }
+  state.focusedBookmarkIndex = -1;
   renderBookmarks();
   renderGroups();
   ui.bookmarkForm?.reset();
   enterBookmarkCreateMode();
-}
-
-function handleInlineBookmarkDelete(bookmarkId) {
-  const bookmark = state.bookmarks.find((entry) => entry.id === bookmarkId);
-  if (!bookmark) return;
-  const confirmed = window.confirm("Delete this bookmark?");
-  if (!confirmed) return;
-  deleteBookmarkById(bookmarkId);
 }
 
 async function copyBookmarkContent(bookmark) {
@@ -970,10 +1104,12 @@ async function handleBookmarkSubmit(event) {
 }
 
 async function handleBookmarkDelete() {
-  const bookmarkId = state.editingBookmarkId;
-  if (!bookmarkId) return;
-  await deleteBookmarkById(bookmarkId);
-  closeModal("bookmarkModal");
+  if (!state.editingBookmarkId) return;
+  const bookmark = state.bookmarks.find(
+    (entry) => entry.id === state.editingBookmarkId
+  );
+  if (!bookmark) return;
+  promptDeleteBookmark(bookmark);
 }
 
 function detectContent(value) {
@@ -1104,6 +1240,8 @@ function closeModal(id) {
     state.pendingGroupDeleteId = null;
     state.groupDeleteMode = false;
     renderGroups();
+  } else if (id === "deleteBookmarkModal") {
+    state.pendingBookmarkDeleteId = null;
   }
 }
 

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BMarks — URL Parameters</title>
+    <link rel="stylesheet" href="/styles/home.css" />
+    <style>
+      body {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 3rem 1.5rem;
+        font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        color: var(--text-primary);
+        background: var(--background);
+      }
+      h1 {
+        font-size: 1.75rem;
+        margin-bottom: 0.75rem;
+      }
+      p {
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+      section {
+        margin-top: 2rem;
+      }
+      code {
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.08);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+        font-size: 0.9rem;
+      }
+      th,
+      td {
+        padding: 0.6rem;
+        border-bottom: 1px solid var(--border-color, #333);
+        text-align: left;
+      }
+      a {
+        color: var(--text-primary);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/home" class="login-link" style="float: right">← Back</a>
+      <h1>Bookmark URL Parameters</h1>
+      <p>
+        Pass these parameters to <code>/home</code> to pre-fill the capture
+        modal from browser extensions, share sheets, or automation tools.
+      </p>
+    </header>
+
+    <section>
+      <h2>Supported parameters</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Param</th>
+            <th>Description</th>
+            <th>Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>content</code> (required)</td>
+            <td>
+              URL, hex color (e.g. <code>#ff00ff</code>), rgb() string, or plain
+              text.
+            </td>
+            <td><code>?content=https://example.com</code></td>
+          </tr>
+          <tr>
+            <td><code>title</code> (optional)</td>
+            <td>
+              Custom label. Links auto-fetch their page title; colors use the
+              literal code.
+            </td>
+            <td><code>&title=New%20Docs</code></td>
+          </tr>
+          <tr>
+            <td><code>group</code> (optional)</td>
+            <td>
+              Group name or UUID. If the group doesn’t exist it’s ignored and
+              you can choose one manually.
+            </td>
+            <td><code>&group=Research</code></td>
+          </tr>
+          <tr>
+            <td><code>new</code> (optional)</td>
+            <td>
+              When present (e.g. <code>new=1</code>), the modal opens even if no
+              other fields are sent.
+            </td>
+            <td><code>&new=1</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Examples</h2>
+      <p>
+        <strong>Save a link:</strong><br />
+        <code
+          >/home?content=https://example.com/docs&title=Docs&group=Design</code
+        >
+      </p>
+      <p>
+        <strong>Save a hex color:</strong><br />
+        <code>/home?content=%23ffcc00&group=Palette</code>
+      </p>
+      <p>
+        <strong>Open empty modal:</strong><br />
+        <code>/home?new=1</code>
+      </p>
+    </section>
+
+    <section>
+      <h2>Behavior notes</h2>
+      <ul>
+        <li>
+          Parameters are consumed once and scrubbed from the URL automatically.
+        </li>
+        <li>
+          If you’re not signed in, the payload is cached for 10 minutes and
+          replayed right after auth completes.
+        </li>
+        <li>
+          Invalid URLs or color strings fall back to plain text and require a
+          manual title.
+        </li>
+      </ul>
+    </section>
+  </body>
+</html>
+
