@@ -30,6 +30,7 @@ const hasStorage =
 const authBroadcast = supportsBroadcast
   ? new BroadcastChannel("bmarks-auth")
   : null;
+let copyToastTimeout = null;
 let pendingUrlPayload = extractLaunchParamsFromUrl();
 let authGuardsAttached = false;
 
@@ -46,6 +47,7 @@ const state = {
   pendingGroupDeleteId: null,
   isLoadingBookmarks: false,
   bookmarkLoadError: null,
+  isSavingBookmark: false,
 };
 
 const ui = {
@@ -87,6 +89,7 @@ const ui = {
   accountForm: document.getElementById("accountForm"),
   displayNameInput: document.getElementById("displayNameInput"),
   accountInfo: document.getElementById("accountInfo"),
+  copyToast: document.getElementById("copyToast"),
 };
 
 init();
@@ -338,6 +341,11 @@ function bindGlobalEvents() {
     openModal("accountModal");
   });
 
+  ui.docsButton?.addEventListener(
+    "click",
+    () => (window.location.href = "/documentaion")
+  );
+
   ui.signOutBtn?.addEventListener("click", async () => {
     await supabase.auth.signOut();
   });
@@ -372,7 +380,21 @@ function bindGlobalEvents() {
   ui.bookmarkContent?.addEventListener("input", updatePreview);
   ui.bookmarkTitle?.addEventListener("input", updatePreview);
   ui.deleteBookmarkButton?.addEventListener("click", handleBookmarkDelete);
+  ui.confirmDeleteGroupButton?.addEventListener("click", confirmDeleteGroup);
   ui.bookmarkList?.addEventListener("click", (event) => {
+    const actionButton = event.target.closest(".bookmark-action");
+    if (actionButton) {
+      const id = actionButton.dataset.bookmarkId;
+      if (!id) return;
+      if (actionButton.dataset.action === "edit") {
+        const bookmark = state.bookmarks.find((entry) => entry.id === id);
+        if (bookmark) startEditingBookmark(bookmark);
+      } else if (actionButton.dataset.action === "delete") {
+        handleInlineBookmarkDelete(id);
+      }
+      event.stopPropagation();
+      return;
+    }
     if (event.target.closest("a")) return;
     const row = event.target.closest(".bookmark-row");
     if (!row?.dataset.bookmarkId) return;
@@ -380,7 +402,7 @@ function bindGlobalEvents() {
       (entry) => entry.id === row.dataset.bookmarkId
     );
     if (bookmark) {
-      startEditingBookmark(bookmark);
+      copyBookmarkContent(bookmark);
     }
   });
 
@@ -706,10 +728,10 @@ function renderBookmarkRow(bookmark) {
   const groupChip = bookmark.groupName
     ? `<span class="tag">${escapeHtml(bookmark.groupName)}</span>`
     : "";
-  const metaInline =
-    domainChip || groupChip
-      ? `<span class="bookmark-meta-inline">${domainChip}${groupChip}</span>`
-      : "";
+  const metaPieces = [domainChip, groupChip].filter(Boolean);
+  const metaInline = metaPieces.length
+    ? `<span class="bookmark-meta-inline">${metaPieces.join("")}</span>`
+    : "";
   const titleMarkup =
     bookmark.type === "link"
       ? `<a class="bookmark-title" href="${url}" target="_blank" rel="noreferrer">${escapeHtml(
@@ -723,13 +745,32 @@ function renderBookmarkRow(bookmark) {
       <div class="bookmark-main">
         ${iconMarkup}
         <div class="bookmark-copy">
-          <div class="bookmark-line">
-            ${titleMarkup}
-            ${metaInline}
-          </div>
+          <div class="bookmark-line">${titleMarkup}${metaInline}</div>
         </div>
       </div>
-      <time class="bookmark-date">${formatDate(bookmark.created_at)}</time>
+      <div class="bookmark-side">
+        <div class="bookmark-actions">
+          <button
+            type="button"
+            class="bookmark-action edit"
+            data-action="edit"
+            data-bookmark-id="${bookmark.id}"
+            aria-label="Edit bookmark"
+          >
+            ✎
+          </button>
+          <button
+            type="button"
+            class="bookmark-action delete"
+            data-action="delete"
+            data-bookmark-id="${bookmark.id}"
+            aria-label="Delete bookmark"
+          >
+            ×
+          </button>
+        </div>
+        <time class="bookmark-date">${formatDate(bookmark.created_at)}</time>
+      </div>
     </li>
   `;
 }
@@ -751,6 +792,66 @@ function startEditingBookmark(bookmark) {
   updatePreview();
   openModal("bookmarkModal");
   ui.bookmarkContent?.focus();
+}
+
+async function deleteBookmarkById(bookmarkId) {
+  if (!bookmarkId) return;
+  const { error } = await supabase
+    .from("bookmarks")
+    .delete()
+    .eq("id", bookmarkId);
+  if (error) {
+    console.error("Failed to delete bookmark", error);
+    return;
+  }
+  state.bookmarks = state.bookmarks.filter(
+    (bookmark) => bookmark.id !== bookmarkId
+  );
+  if (state.editingBookmarkId === bookmarkId) {
+    state.editingBookmarkId = null;
+  }
+  renderBookmarks();
+  renderGroups();
+  ui.bookmarkForm?.reset();
+  enterBookmarkCreateMode();
+}
+
+function handleInlineBookmarkDelete(bookmarkId) {
+  const bookmark = state.bookmarks.find((entry) => entry.id === bookmarkId);
+  if (!bookmark) return;
+  const confirmed = window.confirm("Delete this bookmark?");
+  if (!confirmed) return;
+  deleteBookmarkById(bookmarkId);
+}
+
+async function copyBookmarkContent(bookmark) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(bookmark.content);
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = bookmark.content;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    showCopyToast("Copied to clipboard");
+  } catch (error) {
+    console.warn("Unable to copy bookmark content", error);
+  }
+}
+
+function showCopyToast(message) {
+  if (!ui.copyToast) return;
+  ui.copyToast.textContent = message;
+  ui.copyToast.classList.add("show");
+  clearTimeout(copyToastTimeout);
+  copyToastTimeout = setTimeout(() => {
+    ui.copyToast?.classList.remove("show");
+  }, 1600);
 }
 
 function createIconMarkup(bookmark) {
@@ -778,6 +879,7 @@ function createIconMarkup(bookmark) {
 async function handleBookmarkSubmit(event) {
   event.preventDefault();
   if (!state.session) return;
+  if (state.isSavingBookmark) return;
 
   const content = ui.bookmarkContent.value.trim();
   if (!content) return;
@@ -799,85 +901,78 @@ async function handleBookmarkSubmit(event) {
     ui.bookmarkTitle?.setCustomValidity("");
   }
 
-  const basePayload = {
-    content,
-    title,
-    type: detected.type,
-    url: detected.type === "link" ? detected.url : null,
-    color_code: detected.type === "color" ? detected.color : null,
-    text_note: detected.type === "text" ? content : null,
-    group_id: ui.groupSelect.value || null,
-    metadata: {
-      domain: detected.hostname || null,
-      gradient:
-        detected.type === "text"
-          ? gradientFromString(content)
-          : undefined,
-    },
-  };
-
-  let record;
-  if (state.editingBookmarkId) {
-    const updatePayload = { ...basePayload };
-    const { data, error } = await supabase
-      .from("bookmarks")
-      .update(updatePayload)
-      .eq("id", state.editingBookmarkId)
-      .select()
-      .single();
-    if (error) {
-      console.error("Failed to update bookmark", error);
-      return;
-    }
-    record = data;
-    state.bookmarks = state.bookmarks.map((bookmark) =>
-      bookmark.id === record.id ? normalizeBookmark(record) : bookmark
-    );
-  } else {
-    const insertPayload = {
-      user_id: state.session.user.id,
-      ...basePayload,
-    };
-    const { data, error } = await supabase
-      .from("bookmarks")
-      .insert(insertPayload)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Failed to save bookmark", error);
-      return;
-    }
-    record = data;
-    state.bookmarks = [normalizeBookmark(record), ...state.bookmarks];
-  }
-
-  renderBookmarks();
-  ui.bookmarkForm.reset();
-  enterBookmarkCreateMode();
-  updatePreview();
+  state.isSavingBookmark = true;
+  ui.saveBookmarkButton?.setAttribute("disabled", "disabled");
   closeModal("bookmarkModal");
+
+  try {
+    const basePayload = {
+      content,
+      title,
+      type: detected.type,
+      url: detected.type === "link" ? detected.url : null,
+      color_code: detected.type === "color" ? detected.color : null,
+      text_note: detected.type === "text" ? content : null,
+      group_id: ui.groupSelect.value || null,
+      metadata: {
+        domain: detected.hostname || null,
+        gradient:
+          detected.type === "text"
+            ? gradientFromString(content)
+            : undefined,
+      },
+    };
+
+    let record;
+    if (state.editingBookmarkId) {
+      const updatePayload = { ...basePayload };
+      const { data, error } = await supabase
+        .from("bookmarks")
+        .update(updatePayload)
+        .eq("id", state.editingBookmarkId)
+        .select()
+        .single();
+      if (error) {
+        console.error("Failed to update bookmark", error);
+        return;
+      }
+      record = data;
+      state.bookmarks = state.bookmarks.map((bookmark) =>
+        bookmark.id === record.id ? normalizeBookmark(record) : bookmark
+      );
+    } else {
+      const insertPayload = {
+        user_id: state.session.user.id,
+        ...basePayload,
+      };
+      const { data, error } = await supabase
+        .from("bookmarks")
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Failed to save bookmark", error);
+        return;
+      }
+      record = data;
+      state.bookmarks = [normalizeBookmark(record), ...state.bookmarks];
+    }
+
+    renderBookmarks();
+    ui.bookmarkForm.reset();
+    enterBookmarkCreateMode();
+    updatePreview();
+  } finally {
+    state.isSavingBookmark = false;
+    ui.saveBookmarkButton?.removeAttribute("disabled");
+  }
 }
 
 async function handleBookmarkDelete() {
   const bookmarkId = state.editingBookmarkId;
   if (!bookmarkId) return;
-  const { error } = await supabase
-    .from("bookmarks")
-    .delete()
-    .eq("id", bookmarkId);
-  if (error) {
-    console.error("Failed to delete bookmark", error);
-    return;
-  }
-  state.bookmarks = state.bookmarks.filter(
-    (bookmark) => bookmark.id !== bookmarkId
-  );
-  state.editingBookmarkId = null;
-  renderBookmarks();
-  renderGroups();
-  ui.bookmarkForm?.reset();
-  enterBookmarkCreateMode();
+  await deleteBookmarkById(bookmarkId);
   closeModal("bookmarkModal");
 }
 
