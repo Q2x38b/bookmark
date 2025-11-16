@@ -7,268 +7,185 @@
     <link rel="stylesheet" href="/styles/home.css" />
     <style>
       body {
-        max-width: 960px;
+        max-width: 760px;
         margin: 0 auto;
-        padding: 3.5rem 1.5rem 4rem;
+        padding: 3rem 1.5rem 4rem;
         font-family: var(--font-geist-sans);
         color: var(--text-primary);
-        background: radial-gradient(
-            circle at top,
-            rgba(255, 255, 255, 0.05),
-            transparent 45%
-          ),
-          var(--background);
+        background: var(--background);
+        line-height: 1.6;
       }
-      .docs-hero {
+      .docs-wrapper {
         display: flex;
         flex-direction: column;
-        gap: 0.8rem;
-        margin-bottom: 2.5rem;
+        gap: 2rem;
+      }
+      .docs-back {
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-family: var(--font-geist-mono);
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+      }
+      .docs-back:hover {
+        color: var(--text-primary);
+      }
+      .docs-hero h1 {
+        font-size: clamp(2rem, 4vw, 2.4rem);
+        margin: 0.25rem 0 0.5rem;
+      }
+      .docs-hero p {
+        margin: 0;
+        color: var(--text-secondary);
+        max-width: 46rem;
       }
       .docs-eyebrow {
         font-family: var(--font-geist-mono);
-        font-size: 0.7rem;
+        font-size: 0.72rem;
         letter-spacing: 0.2em;
         color: var(--text-secondary);
       }
-      .docs-hero h1 {
-        font-size: clamp(2rem, 4vw, 2.6rem);
-        margin: 0;
-      }
-      .docs-hero p {
-        max-width: 46rem;
-        color: var(--text-secondary);
-        line-height: 1.6;
-      }
-      .docs-panel {
+      .docs-content section {
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 24px;
-        padding: 1.75rem;
-        margin-bottom: 2rem;
+        border-radius: 14px;
+        padding: 1.25rem 1.5rem;
         background: rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(8px);
       }
-      .docs-panel h2 {
+      .docs-content section + section {
+        margin-top: 1rem;
+      }
+      .docs-content h2 {
+        margin: 0 0 0.75rem;
         font-size: 1rem;
+        font-family: var(--font-geist-mono);
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        font-family: var(--font-geist-mono);
         color: var(--text-secondary);
-        margin: 0 0 1rem;
       }
-      .docs-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      .docs-bullets {
+        margin: 0;
+        padding-left: 1rem;
+        color: var(--text-secondary);
+      }
+      .docs-bullets li {
+        margin-bottom: 0.4rem;
+      }
+      .docs-params {
+        display: flex;
+        flex-direction: column;
         gap: 1rem;
+        margin: 0;
       }
-      .docs-card {
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 18px;
-        padding: 1rem;
-        background: rgba(255, 255, 255, 0.02);
+      .docs-params div {
+        border-left: 2px solid rgba(255, 255, 255, 0.08);
+        padding-left: 1rem;
       }
-      .docs-card strong {
-        display: block;
-        margin-bottom: 0.35rem;
+      .docs-params dt {
+        margin: 0 0 0.35rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-family: var(--font-geist-mono);
+        font-size: 0.85rem;
       }
-      .docs-card p {
+      .docs-params dt span {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #f87171;
+      }
+      .docs-params dd {
         margin: 0;
         color: var(--text-secondary);
-        font-size: 0.9rem;
-        line-height: 1.5;
-      }
-      .table-scroll {
-        overflow-x: auto;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.9rem;
-        border-radius: 18px;
-        overflow: hidden;
-      }
-      thead {
-        background: rgba(255, 255, 255, 0.05);
-        font-family: var(--font-geist-mono);
-        font-size: 0.75rem;
-        letter-spacing: 0.08em;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-      }
-      th,
-      td {
-        padding: 0.85rem 1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        text-align: left;
-        vertical-align: top;
-      }
-      tbody tr:last-child td {
-        border-bottom: none;
-      }
-      tbody tr:nth-child(odd) {
-        background: rgba(255, 255, 255, 0.015);
       }
       code {
         font-family: var(--font-geist-mono);
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         background: rgba(255, 255, 255, 0.08);
         padding: 0.15rem 0.4rem;
         border-radius: 6px;
       }
       pre {
-        margin: 1rem 0 0;
-        padding: 1rem;
-        border-radius: 18px;
-        background: rgba(7, 7, 7, 0.75);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        margin: 0;
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        background: rgba(7, 7, 7, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.06);
         font-family: var(--font-geist-mono);
         font-size: 0.85rem;
         overflow-x: auto;
-      }
-      .docs-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 0.9rem;
-        color: var(--text-secondary);
-        line-height: 1.6;
-      }
-      .docs-list li {
-        position: relative;
-        padding-left: 1.2rem;
-      }
-      .docs-list li::before {
-        content: "›";
-        position: absolute;
-        left: 0;
-        color: var(--foreground);
-      }
-      .docs-tagline {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        font-size: 0.85rem;
-        margin-top: 0.5rem;
-        color: var(--text-secondary);
       }
       @media (max-width: 640px) {
         body {
           padding: 2.25rem 1.25rem 3rem;
         }
-        .docs-panel {
-          padding: 1.25rem;
-          border-radius: 18px;
+        .docs-content section {
+          padding: 1rem;
         }
       }
     </style>
   </head>
   <body>
-    <a href="/" class="login-link" style="float: right; margin-bottom: 0.5rem"
-      >← Back</a
-    >
-    <header class="docs-hero">
-      <p class="docs-eyebrow">Documentation</p>
-      <h1>Bookmark URL Parameters</h1>
-      <p>
-        Pipe data into BMarks from browser extensions, Shortcuts, or automation
-        tooling by sending query parameters to <code>/</code>. The capture modal
-        opens with everything pre-filled, even if you still need to sign in.
-      </p>
-      <div class="docs-tagline">
-        <span>⌘ + D • 0→1 capture workflow</span>
-      </div>
-    </header>
+    <main class="docs-wrapper">
+      <a href="/" class="docs-back">← Back</a>
+      <header class="docs-hero">
+        <p class="docs-eyebrow">Documentation</p>
+        <h1>Bookmark URL Parameters</h1>
+        <p>
+          Pipe data into BMarks from browser extensions, Shortcuts, or automation tooling by sending query parameters to
+          <code>/</code>. The capture modal opens with everything pre-filled, even if you still need to sign in.
+        </p>
+      </header>
 
-    <section class="docs-panel">
-      <h2>Quick reference</h2>
-      <div class="docs-grid">
-        <article class="docs-card">
-          <strong>Works everywhere</strong>
-          <p>macOS share sheet, Raycast, Alfred, browser extensions, or curl.</p>
-        </article>
-        <article class="docs-card">
-          <strong>Autodetects content</strong>
-          <p>Links, color values, and notes are inferred instantly.</p>
-        </article>
-        <article class="docs-card">
-          <strong>Safe fallback</strong>
-          <p>Invalid payloads become plain text so nothing is lost.</p>
-        </article>
-      </div>
-    </section>
+      <article class="docs-content">
+        <section>
+          <h2>Quick notes</h2>
+          <ul class="docs-bullets">
+            <li>Works with macOS share sheet, Raycast, Alfred, browser extensions, or curl.</li>
+            <li>Links, color values, and plain text are inferred instantly.</li>
+            <li>Unknown payloads become plain text so nothing gets dropped.</li>
+          </ul>
+        </section>
 
-    <section class="docs-panel">
-      <h2>Supported parameters</h2>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 25%">Parameter</th>
-              <th style="width: 45%">Description</th>
-              <th>Example</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>content</code> (required)</td>
-              <td>
-                URL, hex color (e.g. <code>#ff00ff</code>), rgb()/hsl() string,
-                or plain text.
-              </td>
-              <td><code>?content=https://example.com</code></td>
-            </tr>
-            <tr>
-              <td><code>title</code> (optional)</td>
-              <td>
-                Custom label. Links auto-fetch their page title; colors use the
-                literal code.
-              </td>
-              <td><code>&title=New%20Docs</code></td>
-            </tr>
-            <tr>
-              <td><code>group</code> (optional)</td>
-              <td>
-                Group name or UUID. If the group doesn’t exist it’s ignored and
-                you can choose one manually.
-              </td>
-              <td><code>&group=Research</code></td>
-            </tr>
-            <tr>
-              <td><code>new</code> (optional)</td>
-              <td>
-                When present (e.g. <code>new=1</code>), the modal opens even if
-                no other fields are sent.
-              </td>
-              <td><code>&new=1</code></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+        <section>
+          <h2>Parameters</h2>
+          <dl class="docs-params">
+            <div>
+              <dt><code>content</code> <span>required</span></dt>
+              <dd>URL, hex color (e.g. <code>#ff00ff</code>), rgb()/hsl() string, or plain text.</dd>
+            </div>
+            <div>
+              <dt><code>title</code></dt>
+              <dd>Optional custom label. Links auto-fetch the page title; colors use the literal code.</dd>
+            </div>
+            <div>
+              <dt><code>group</code></dt>
+              <dd>Optional group name or UUID. Missing groups are ignored so you can pick one manually.</dd>
+            </div>
+            <div>
+              <dt><code>new</code></dt>
+              <dd>When present (e.g. <code>new=1</code>), the modal opens even if no other fields are sent.</dd>
+            </div>
+          </dl>
+        </section>
 
-    <section class="docs-panel">
-      <h2>Examples</h2>
-      <pre>/?content=https://example.com/docs&title=Docs&group=Design
+        <section>
+          <h2>Examples</h2>
+          <pre>/?content=https://example.com/docs&title=Docs&group=Design
 /?content=%23ffcc00&group=Palette
 /?new=1</pre>
-    </section>
+        </section>
 
-    <section class="docs-panel">
-      <h2>Behavior notes</h2>
-      <ul class="docs-list">
-        <li>Parameters are consumed once and scrubbed from the URL.</li>
-        <li>
-          Not signed in? Payloads are cached for 10 minutes then replayed after
-          auth finishes.
-        </li>
-        <li>
-          Invalid URLs or color strings fall back to plain text and require a
-          manual title.
-        </li>
-      </ul>
-    </section>
+        <section>
+          <h2>Behavior</h2>
+          <ul class="docs-bullets">
+            <li>Parameters are consumed once and scrubbed from the URL.</li>
+            <li>Not signed in? Payloads are cached for 10 minutes and replayed post-auth.</li>
+            <li>Invalid URLs or color strings fall back to plain text and will need a manual title.</li>
+          </ul>
+        </section>
+      </article>
+    </main>
   </body>
 </html>
 
