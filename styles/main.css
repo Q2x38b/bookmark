@@ -193,27 +193,55 @@ a {
   position: absolute;
   top: calc(100% + 0.5rem);
   left: 0;
-  min-width: 220px;
+  min-width: 200px;
   background: var(--background);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 0.35rem;
+  border-radius: 8px;
+  padding: 0.5rem;
   display: none;
   z-index: 100;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 }
 
 .group-picker[data-open="true"] .group-dropdown {
   display: block;
 }
 
-.group-options {
+.group-divider {
+  border: none;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0.4rem 0;
+}
+
+.group-actions {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.35rem;
-  max-height: 320px;
-  overflow-y: auto;
+  gap: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.group-action-button {
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-geist-mono);
+  font-size: 0.72rem;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.group-action-button:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.group-action-button.danger {
+  color: #f87171;
 }
 
 .group-option {
@@ -221,13 +249,13 @@ a {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 0.4rem 0.55rem;
+  padding: 0.5rem 0.75rem;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   color: var(--text-primary);
   font-family: var(--font-satoshi);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: background 0.15s ease;
   text-align: left;
@@ -238,105 +266,8 @@ a {
 }
 
 .group-option.active {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--foreground);
-}
-
-.group-divider,
-.group-actions hr,
-.user-menu hr {
-  border: none;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.08);
-  margin: 0.35rem 0;
-}
-
-.group-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.35rem 0.35rem 0;
-}
-
-.group-secondary {
-  width: 100%;
-  padding: 0.4rem 0.5rem;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-family: var(--font-geist-mono);
-  font-size: 0.72rem;
-  cursor: pointer;
-  text-align: left;
-  border-radius: 6px;
-  transition: all 0.15s ease;
-}
-
-.group-secondary:hover {
   background: var(--hover-bg);
-  color: var(--text-primary);
-}
-
-.tag {
-  padding: 0.125rem 0.375rem;
-  background: var(--border-subtle);
-  border-radius: 4px;
-  font-family: var(--font-geist-mono);
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.tag.tiny {
-  font-size: 0.625rem;
-}
-
-.tag.muted {
-  opacity: 0.7;
-}
-
-.group-form {
-  padding: 0.35rem;
-  display: none;
-}
-
-.group-form.visible {
-  display: block;
-}
-
-.group-form input {
-  width: 100%;
-  padding: 0.45rem;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-geist-sans);
-  font-size: 0.85rem;
-  margin-bottom: 0.35rem;
-}
-
-.group-form input:focus {
-  outline: none;
-  border-color: var(--text-secondary);
-}
-
-.group-form button {
-  width: 100%;
-  padding: 0.45rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-geist-mono);
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.group-form button:hover {
-  background: var(--border-subtle);
+  color: var(--foreground);
 }
 
 .group-delete-menu {
@@ -350,7 +281,7 @@ a {
 
 .group-delete-label {
   font-family: var(--font-geist-mono);
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
   margin-bottom: 0.35rem;
 }
@@ -372,8 +303,72 @@ a {
 }
 
 .group-delete-option:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+.tag {
+  padding: 0.125rem 0.375rem;
+  background: var(--border-subtle);
+  border-radius: 4px;
+  font-family: var(--font-geist-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.tag.tiny {
+  font-size: 0.625rem;
+}
+
+.tag.muted {
+  opacity: 0.7;
+}
+
+.group-form {
+  padding: 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 0.5rem;
+  display: none;
+}
+
+.group-form.visible {
+  display: block;
+}
+
+.group-form input {
+  width: 100%;
+  padding: 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.group-form input:focus {
+  outline: none;
+  border-color: var(--text-secondary);
+}
+
+.group-form button {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--hover-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-geist-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.group-form button:hover {
+  background: var(--border-subtle);
 }
 
 /* Search Bar */
@@ -413,7 +408,7 @@ a {
 
 .add-bookmark-btn {
   position: absolute;
-  left: -0.25rem;
+  left: -0.1rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -458,7 +453,7 @@ a {
   padding: 0.375rem 0.75rem;
   background: rgba(255, 255, 255, 0.04);
   border: none;
-  border-radius: 999px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -468,17 +463,24 @@ a {
 }
 
 .user-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
   background: var(--border-color);
   display: grid;
   place-items: center;
-  overflow: hidden;
   font-family: var(--font-geist-mono);
-  font-size: 0.65rem;
+  font-size: 0.625rem;
   font-weight: 600;
   color: var(--text-primary);
+  overflow: hidden;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .user-menu {
@@ -497,6 +499,14 @@ a {
 
 .user-menu[data-open="true"] {
   display: block;
+}
+
+.user-menu hr,
+.menu-divider {
+  border: none;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0.4rem 0;
 }
 
 .user-menu-item {
@@ -564,10 +574,9 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.65rem;
-  padding: 0.35rem 0.6rem;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
   background: transparent;
-  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   transition: all 0.15s ease;
   cursor: pointer;
@@ -575,7 +584,6 @@ a {
 
 .bookmark-row:hover {
   background: var(--hover-bg);
-  border-color: var(--border-color);
 }
 
 .bookmark-date {
@@ -589,7 +597,7 @@ a {
 .bookmark-main {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   flex: 1;
   min-width: 0;
 }
@@ -605,8 +613,8 @@ a {
 }
 
 .bookmark-icon img {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
 }
 
@@ -652,12 +660,9 @@ a {
 /* Modal */
 .modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  inset: 0;
+  background: rgba(5, 5, 5, 0.75);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -673,20 +678,21 @@ a {
 }
 
 .modal-content {
-  width: 500px;
-  max-width: 90vw;
-  max-height: 90vh;
-  background: var(--background);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  width: 420px;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  background: rgba(17, 17, 17, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
   padding: 1.5rem;
   overflow-y: auto;
-  transform: scale(0.97);
-  transition: transform 0.2s ease;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
+  transform: scale(0.97) translateY(6px);
+  transition: transform 0.23s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .modal[aria-hidden="false"] .modal-content {
-  transform: scale(1);
+  transform: scale(1) translateY(0);
 }
 
 .modal-header {
@@ -746,10 +752,10 @@ a {
 .form-select,
 .form-textarea {
   width: 100%;
-  padding: 0.75rem;
-  background: transparent;
+  padding: 0.65rem 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-primary);
   font-family: var(--font-geist-sans);
   font-size: 0.875rem;
@@ -761,7 +767,7 @@ a {
 .form-textarea:focus {
   outline: none;
   border-color: var(--text-secondary);
-  background: var(--hover-bg);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .form-input::placeholder,
@@ -770,28 +776,27 @@ a {
 }
 
 .preview-card {
-  padding: 0.9rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color);
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.75rem;
 }
 
 .preview-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .preview-icon img {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
 .preview-details {
@@ -801,10 +806,10 @@ a {
 
 .preview-title {
   font-family: var(--font-satoshi);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-primary);
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.25rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -812,27 +817,27 @@ a {
 
 .preview-meta {
   font-family: var(--font-geist-mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
 }
 
 .btn-primary {
   width: 100%;
-  padding: 0.75rem;
-  background: var(--hover-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
+  padding: 0.7rem;
+  background: linear-gradient(135deg, #f26659, #ffb199);
+  border: none;
+  border-radius: 999px;
+  color: #0a0a0a;
   font-family: var(--font-geist-mono);
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn-primary:hover {
-  background: var(--border-subtle);
-  border-color: var(--text-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(242, 102, 89, 0.25);
 }
 
 .modal-actions {
