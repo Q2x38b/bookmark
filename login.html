@@ -1,11 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BMarks — Login</title>
-    <link rel="stylesheet" href="styles/auth.css" />
-  </head>
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <meta name="application-name" content="BMarks" />
+      <meta name="theme-color" content="#141414" />
+      <meta name="mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+      <title>BMarks — Login</title>
+      <link rel="manifest" href="/manifest.webmanifest" />
+      <link rel="icon" href="/icons/icon-32.png" sizes="32x32" type="image/png" />
+      <link rel="icon" href="/icons/icon-96.png" sizes="96x96" type="image/png" />
+      <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+      <link rel="stylesheet" href="styles/auth.css" />
+    </head>
   <body data-auth-mode="login">
     <div class="auth-container">
       <div class="auth-card">
@@ -77,8 +86,9 @@
         <p class="error" id="authError"></p>
       </div>
     </div>
-    <script src="js/config.js"></script>
-    <script type="module" src="js/auth.js" data-mode="login"></script>
+      <script src="js/config.js"></script>
+      <script type="module" src="js/pwa.js"></script>
+      <script type="module" src="js/auth.js" data-mode="login"></script>
     <script>
       (function scrubHtmlExtension() {
         if (!window.history?.replaceState) return;
