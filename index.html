@@ -353,17 +353,25 @@
     <script src="js/config.js"></script>
     <script type="module" src="js/app.js"></script>
     <script>
-      (function scrubHtmlExtension() {
+      (function scrubUrl() {
         if (!window.history?.replaceState) return;
-        const path = window.location.pathname;
-        if (!path.endsWith(".html")) return;
-        let newPath = path.replace(/index\.html$/i, "");
-        if (newPath === path) {
-          newPath = path.slice(0, -5);
+        const { pathname, search, hash } = window.location;
+        let newPath = pathname;
+        if (pathname.endsWith(".html")) {
+          newPath = pathname.replace(/index\.html$/i, "");
+          if (newPath === pathname) {
+            newPath = pathname.slice(0, -5);
+          }
+          if (!newPath) newPath = "/";
         }
-        if (!newPath) newPath = "/";
-        const next = `${newPath}${window.location.search}${window.location.hash}`;
-        window.history.replaceState({}, "", next);
+        let newHash = hash;
+        if (newHash === "#" || newHash === "#/") {
+          newHash = "";
+        }
+        if (newPath !== pathname || newHash !== hash) {
+          const next = `${newPath}${search}${newHash}`;
+          window.history.replaceState({}, "", next);
+        }
       })();
     </script>
   </body>
