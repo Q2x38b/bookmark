@@ -40,6 +40,8 @@ let copyToastTimeout = null;
 let pendingUrlPayload = extractLaunchParamsFromUrl();
 let authGuardsAttached = false;
 const realtimeChannels = [];
+let realtimeRetryTimer = null;
+const REALTIME_RETRY_DELAY = 4000;
 
 const state = {
   session: null,
@@ -871,6 +873,7 @@ function renderBookmarks() {
     .join("");
   updateBookmarkFocusVisuals();
   enableBookmarkSwipe();
+  hydrateBookmarkIcons();
 }
 
 function renderBookmarkRow(bookmark, visibleIndex) {
@@ -979,6 +982,44 @@ function enableBookmarkSwipe() {
   if (!ui.bookmarkList) return;
   const rows = ui.bookmarkList.querySelectorAll(".bookmark-row");
   rows.forEach((row) => attachSwipeHandlers(row));
+}
+
+function hydrateBookmarkIcons() {
+  if (!ui.bookmarkList) return;
+  const iconImages = ui.bookmarkList.querySelectorAll(
+    ".bookmark-icon[data-icon-type='link'] img[data-favicon]"
+  );
+  iconImages.forEach((img) => {
+    if (img.dataset.iconHydrated === "true") return;
+    img.dataset.iconHydrated = "true";
+    const parent = img.closest(".bookmark-icon--link");
+    if (!parent) return;
+
+    const markFallback = () => {
+      parent.classList.remove("has-favicon");
+      parent.classList.add("show-fallback");
+      if (img.isConnected) {
+        img.remove();
+      }
+    };
+
+    const markSuccess = () => {
+      parent.classList.add("has-favicon");
+      parent.classList.remove("show-fallback");
+    };
+
+    if (img.complete) {
+      if (img.naturalWidth > 0) {
+        markSuccess();
+      } else {
+        markFallback();
+      }
+      return;
+    }
+
+    img.addEventListener("load", markSuccess, { once: true });
+    img.addEventListener("error", markFallback, { once: true });
+  });
 }
 
 function attachSwipeHandlers(row) {
@@ -1311,16 +1352,26 @@ function createIconMarkup(bookmark) {
     return `<div class="bookmark-icon" style="background:${bookmark.color_code};"></div>`;
   }
   if (bookmark.type === "link") {
-    const url = bookmark.url || bookmark.content;
-    const domain = safeHostname(url);
-    const favicon = resolveFaviconUrl(url);
+    const url = bookmark.url || bookmark.content || "";
+    const domain = url ? safeHostname(url) : "";
+    const favicon = domain ? resolveFaviconUrl(domain) : null;
+    const fallbackLabel = domainGlyph(domain);
+    const classes = ["bookmark-icon", "bookmark-icon--link"];
+    if (!favicon) {
+      classes.push("show-fallback");
+    }
     return `
-      <div class="bookmark-icon">
+      <div class="${classes.join(" ")}" data-icon-type="link">
         ${
           favicon
-            ? `<img src="${favicon}" alt="${domain} favicon" loading="lazy" onerror="this.replaceWith('🌐')" />`
-            : "<span>🌐</span>"
+            ? `<img src="${favicon}" alt="${escapeHtml(
+                domain || "Link"
+              )} favicon" loading="lazy" decoding="async" data-favicon="true" />`
+            : ""
         }
+        <span class="bookmark-icon-fallback" aria-hidden="true">${escapeHtml(
+          fallbackLabel
+        )}</span>
       </div>
     `;
   }
@@ -1584,6 +1635,12 @@ function escapeHtml(str = "") {
     .replace(/'/g, "&#039;");
 }
 
+function domainGlyph(domain = "") {
+  const cleaned = domain.replace(/[^a-z0-9]/gi, "");
+  if (!cleaned) return "??";
+  return cleaned.slice(0, 2).toUpperCase();
+}
+
 function gradientFromString(input = "") {
   const gradients = [
     "linear-gradient(135deg, #f6d365 0%, #fda085 100%)",
@@ -1614,47 +1671,40 @@ function clamp(value, min, max) {
 }
 
 function resolveFaviconUrl(link = "") {
-  try {
-    const normalized = /^(https?:\/\/)/i.test(link) ? link : `https://${link}`;
-    const url = new URL(normalized);
-    return `${url.origin}/favicon.ico`;
-  } catch (_e) {
-    return null;
-  }
+  const domain = safeHostname(link);
+  if (!domain) return null;
+  return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(
+    domain
+  )}`;
 }
 
 function subscribeToRealtime() {
   if (!state.session) return;
+  clearRealtimeRetry();
   unsubscribeFromRealtime();
   const userId = state.session.user.id;
 
-  const bookmarkChannel = supabase
-    .channel(`bookmarks-${userId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "bookmarks",
-        filter: `user_id=eq.${userId}`,
-      },
-      handleBookmarkRealtimeChange
-    )
-    .subscribe();
+  const bookmarkChannel = createRealtimeChannel(
+    `bookmarks-${userId}`,
+    {
+      event: "*",
+      schema: "public",
+      table: "bookmarks",
+      filter: `user_id=eq.${userId}`,
+    },
+    handleBookmarkRealtimeChange
+  );
 
-  const groupChannel = supabase
-    .channel(`groups-${userId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "groups",
-        filter: `user_id=eq.${userId}`,
-      },
-      handleGroupRealtimeChange
-    )
-    .subscribe();
+  const groupChannel = createRealtimeChannel(
+    `groups-${userId}`,
+    {
+      event: "*",
+      schema: "public",
+      table: "groups",
+      filter: `user_id=eq.${userId}`,
+    },
+    handleGroupRealtimeChange
+  );
 
   realtimeChannels.push(bookmarkChannel, groupChannel);
 }
@@ -1666,6 +1716,41 @@ function unsubscribeFromRealtime() {
       supabase.removeChannel(channel);
     }
   }
+  clearRealtimeRetry();
+}
+
+function createRealtimeChannel(name, filter, handler) {
+  const channel = supabase.channel(name).on("postgres_changes", filter, handler);
+  channel.subscribe((status) => handleRealtimeStatus(status, name, channel));
+  return channel;
+}
+
+function handleRealtimeStatus(status, context, channel) {
+  if (status === "SUBSCRIBED") {
+    return;
+  }
+  if (!realtimeChannels.includes(channel)) {
+    return;
+  }
+  if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
+    console.warn(`Realtime channel ${context} ${status}. Retrying soon.`);
+    scheduleRealtimeRetry();
+  }
+}
+
+function scheduleRealtimeRetry(delay = REALTIME_RETRY_DELAY) {
+  if (realtimeRetryTimer || !state.session) return;
+  realtimeRetryTimer = setTimeout(() => {
+    realtimeRetryTimer = null;
+    if (!state.session) return;
+    subscribeToRealtime();
+  }, delay);
+}
+
+function clearRealtimeRetry() {
+  if (!realtimeRetryTimer) return;
+  clearTimeout(realtimeRetryTimer);
+  realtimeRetryTimer = null;
 }
 
 function handleBookmarkRealtimeChange(payload) {
@@ -1673,6 +1758,11 @@ function handleBookmarkRealtimeChange(payload) {
     return;
   }
   const eventType = payload.eventType;
+  const recordUserId =
+    payload.new?.user_id ?? payload.old?.user_id ?? null;
+  if (state.session && recordUserId && recordUserId !== state.session.user.id) {
+    return;
+  }
 
   if (eventType === "DELETE") {
     const deletedId = payload.old?.id;
