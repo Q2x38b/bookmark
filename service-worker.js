@@ -4,6 +4,7 @@ const STATIC_CACHE = `bmarks-static-${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   "/",
   "/index.html",
+  "/share-target/index.html",
   "/login.html",
   "/register.html",
   "/documentaion/index.html",
@@ -112,46 +113,44 @@ function networkFirst(request) {
 
 function handleShareTarget(event) {
   const { request } = event;
-  if (request.method !== "POST") {
-    return false;
-  }
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname !== "/share-target") {
+  if (
+    url.origin !== self.location.origin ||
+    !["/share-target", "/share-target/"].includes(url.pathname)
+  ) {
     return false;
   }
 
-  const sharePromise = request.formData().then((formData) => {
-    const sharedUrl = (formData.get("url") || "").trim();
-    const sharedText = (formData.get("text") || "").trim();
-    const sharedTitle = (formData.get("title") || "").trim();
+  if (!["POST", "GET"].includes(request.method)) {
+    return false;
+  }
 
-    const content = sharedUrl || sharedText || "";
-    let title = sharedTitle || "";
+  const sharePromise =
+    request.method === "POST"
+      ? request.formData().then((formData) =>
+          normalizeSharePayload({
+            url: formData.get("url"),
+            text: formData.get("text"),
+            title: formData.get("title")
+          })
+        )
+      : Promise.resolve(
+          normalizeSharePayload({
+            url: url.searchParams.get("url"),
+            text: url.searchParams.get("text"),
+            title: url.searchParams.get("title")
+          })
+        );
 
-    if (!title) {
-      if (sharedUrl && sharedText && sharedText !== sharedUrl) {
-        title = sharedText.slice(0, 120);
-      } else if (!sharedUrl && sharedText) {
-        title = sharedText.slice(0, 60);
-      }
-    }
+  respondToShareTarget(event, sharePromise);
+  return true;
+}
 
-    const params = new URLSearchParams();
-    if (content) {
-      params.set("content", content);
-    }
-    if (title) {
-      params.set("title", title);
-    }
-    params.set("new", "1");
-
-    return { targetUrl: `/?${params.toString()}` };
-  });
-
+function respondToShareTarget(event, sharePromise) {
   event.respondWith(
     (async () => {
       const { targetUrl } = await sharePromise;
-      return Response.redirect(targetUrl);
+      return Response.redirect(targetUrl, 303);
     })()
   );
 
@@ -168,13 +167,61 @@ function handleShareTarget(event) {
         allClients[0];
 
       if (focusedClient) {
-        await focusedClient.navigate(targetUrl);
+        try {
+          await focusedClient.navigate(targetUrl);
+        } catch (_error) {
+          // Ignore navigation failures (e.g., same-document navigations)
+        }
         await focusedClient.focus();
       } else {
         await self.clients.openWindow(targetUrl);
       }
     })()
   );
+}
 
-  return true;
+function normalizeSharePayload(raw = {}) {
+  const sharedUrl = (raw.url || "").trim();
+  const sharedText = (raw.text || "").trim();
+  const sharedTitle = (raw.title || "").trim();
+
+  const extractedUrl =
+    sharedUrl || tryExtractUrlFromText(sharedText) || "";
+  const content = extractedUrl || sharedText || "";
+  let title = sharedTitle || "";
+
+  if (!title) {
+    if (extractedUrl && sharedText && sharedText !== extractedUrl) {
+      title = sharedText.slice(0, 120);
+    } else if (!extractedUrl && sharedText) {
+      title = sharedText.slice(0, 60);
+    }
+  }
+
+  const params = new URLSearchParams();
+  if (content) {
+    params.set("content", content);
+  }
+  if (title) {
+    params.set("title", title);
+  }
+  params.set("new", "1");
+
+  return { targetUrl: `/?${params.toString()}` };
+}
+
+function tryExtractUrlFromText(text = "") {
+  if (!text) {
+    return "";
+  }
+  const match = text.match(/(https?:\/\/|www\.)[^\s)]+/i);
+  if (!match) {
+    return "";
+  }
+  let candidate = match[0];
+  candidate = candidate.replace(/[)\],.;!?]+$/, "");
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = `https://${candidate}`;
+  }
+  return candidate;
 }

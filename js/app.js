@@ -1517,6 +1517,17 @@ function detectContent(value) {
   }
 }
 
+function extractUrlFromText(text = "") {
+  if (!text) return "";
+  const match = text.match(/(https?:\/\/|www\.)[^\s)]+/i);
+  if (!match) return "";
+  let candidate = match[0].replace(/[)\],.;!?]+$/, "");
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = `https://${candidate}`;
+  }
+  return candidate;
+}
+
 async function resolveTitle(detected) {
   if (detected.type === "link" && detected.url) {
     const title = await fetchPageTitle(detected.url);
@@ -2008,7 +2019,7 @@ function clearLaunchParamsFromUrl() {
   if (!window.history?.replaceState) return;
   const url = new URL(window.location.href);
   let changed = false;
-  ["content", "title", "group", "new"].forEach((key) => {
+  ["content", "title", "group", "new", "text", "url"].forEach((key) => {
     if (url.searchParams.has(key)) {
       url.searchParams.delete(key);
       changed = true;
@@ -2025,16 +2036,7 @@ function clearLaunchParamsFromUrl() {
 function extractLaunchParamsFromUrl() {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
-  const payload = {
-    content: cleanParam(params.get("content")),
-    title: cleanParam(params.get("title")),
-    group: cleanParam(params.get("group")),
-    openModal:
-      params.has("new") ||
-      ["1", "true", "yes"].includes(
-        (params.get("new") || "").trim().toLowerCase()
-      ),
-  };
+  const payload = buildLaunchPayloadFromParams(params);
   return hasLaunchPayload(payload) ? payload : null;
 }
 
@@ -2042,6 +2044,35 @@ function cleanParam(value) {
   if (value == null) return null;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
+}
+
+function buildLaunchPayloadFromParams(params) {
+  if (!params) return null;
+  const contentParam = cleanParam(params.get("content"));
+  const sharedUrl = cleanParam(params.get("url"));
+  const sharedText = cleanParam(params.get("text"));
+  let title = cleanParam(params.get("title"));
+  const group = cleanParam(params.get("group"));
+
+  const content =
+    contentParam || sharedUrl || extractUrlFromText(sharedText) || sharedText;
+
+  if (!title && sharedText && sharedText !== content) {
+    title = sharedText.slice(0, 120);
+  }
+
+  const openModal =
+    params.has("new") ||
+    ["1", "true", "yes"].includes(
+      (params.get("new") || "").trim().toLowerCase()
+    );
+
+  return {
+    content,
+    title,
+    group,
+    openModal: openModal || Boolean(content || title || group),
+  };
 }
 
 function hasLaunchPayload(payload) {
