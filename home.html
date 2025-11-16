@@ -54,6 +54,7 @@
             <button type="button" class="user-menu-item" id="accountSettingsBtn">Account settings</button>
             <button type="button" class="user-menu-item" id="preferencesBtn">Preferences</button>
             <button type="button" class="user-menu-item" id="shortcutsBtn">Keyboard shortcuts</button>
+            <button type="button" class="user-menu-item" id="docsBtn">Documentation</button>
             <hr />
             <button type="button" class="user-menu-item signout" id="signOutBtn">Sign out</button>
           </div>
@@ -157,6 +158,27 @@
           
           <button type="submit" class="btn-primary">Save Changes</button>
         </form>
+      </div>
+    </div>
+
+    <div class="modal" id="deleteGroupModal" aria-hidden="true">
+      <div class="modal-content small">
+        <div class="modal-header">
+          <h2 class="modal-title">Delete group</h2>
+          <button type="button" class="modal-close" data-close-modal aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <path d="M15 5L5 15M5 5l10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>Bookmarks will keep their content but lose this label.</p>
+          <p><strong id="groupDeleteName"></strong></p>
+          <div class="modal-actions">
+            <button type="button" class="btn-danger" id="confirmDeleteGroupButton">Delete group</button>
+            <button type="button" class="btn-primary" data-close-modal>Cancel</button>
+          </div>
+        </div>
       </div>
     </div>
 

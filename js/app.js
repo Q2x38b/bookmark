@@ -24,6 +24,7 @@ const PENDING_BOOKMARK_TTL = 1000 * 60 * 10; // 10 minutes
 const LANDING_PATH = "/";
 const supportsBroadcast =
   typeof window !== "undefined" && "BroadcastChannel" in window;
+const SESSION_CACHE_KEY = "bmarks.session";
 const hasStorage =
   typeof window !== "undefined" && "localStorage" in window;
 const authBroadcast = supportsBroadcast
@@ -42,6 +43,9 @@ const state = {
   },
   editingBookmarkId: null,
   groupDeleteMode: false,
+  pendingGroupDeleteId: null,
+  isLoadingBookmarks: false,
+  bookmarkLoadError: null,
 };
 
 const ui = {
@@ -56,6 +60,10 @@ const ui = {
   groupNameInput: document.getElementById("groupNameInput"),
   openGroupCreator: document.getElementById("openGroupCreator"),
   openGroupDeleter: document.getElementById("openGroupDeleter"),
+  groupDeleteName: document.getElementById("groupDeleteName"),
+  confirmDeleteGroupButton: document.getElementById(
+    "confirmDeleteGroupButton"
+  ),
   activeGroupLabel: document.getElementById("activeGroupLabel"),
   groupSelect: document.getElementById("bookmarkGroup"),
   openBookmarkModal: document.getElementById("openBookmarkModal"),
@@ -67,6 +75,7 @@ const ui = {
   previewCard: document.getElementById("previewCard"),
   saveBookmarkButton: document.getElementById("bookmarkSubmitButton"),
   deleteBookmarkButton: document.getElementById("deleteBookmarkButton"),
+  docsButton: document.getElementById("docsBtn"),
   userChip: document.getElementById("userChip"),
   userMenu: document.getElementById("userMenu"),
   userAvatar: document.getElementById("userAvatar"),
@@ -95,6 +104,10 @@ async function ensureSession() {
   let session = await fetchSession();
 
   if (!session) {
+    session = await restoreSessionFromCache();
+  }
+
+  if (!session) {
     session = await waitForInitialSession();
   }
 
@@ -106,6 +119,8 @@ async function ensureSession() {
 
   state.session = session;
   hydrateUserChip(session.user);
+  cacheSession(session);
+  clearAuthHash();
   attachAuthGuards();
   return session;
 }
@@ -114,6 +129,9 @@ async function fetchSession() {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+  if (session) {
+    cacheSession(session);
+  }
   return session;
 }
 
@@ -134,6 +152,7 @@ function attachAuthGuards() {
     if (event === "SIGNED_OUT") {
       state.session = null;
       broadcastAuthState(false);
+      clearCachedSession();
       redirectToLanding();
       return;
     }
@@ -146,6 +165,8 @@ function attachAuthGuards() {
       if (!newSession) return;
       state.session = newSession;
       hydrateUserChip(newSession.user);
+      cacheSession(newSession);
+      clearAuthHash();
       broadcastAuthState(true);
     }
   });
@@ -181,6 +202,7 @@ async function refreshSession() {
 
   if (!session) {
     state.session = null;
+    clearCachedSession();
     redirectToLanding();
     return null;
   }
@@ -194,6 +216,7 @@ async function refreshSession() {
     await Promise.all([fetchGroups(), fetchBookmarks()]);
   }
 
+  cacheSession(session);
   return session;
 }
 
@@ -385,6 +408,11 @@ function bindGlobalEvents() {
   document.getElementById("shortcutsBtn")?.addEventListener("click", () =>
     window.alert("Keyboard shortcuts coming soon.")
   );
+  ui.docsButton?.addEventListener(
+    "click",
+    () => (window.location.href = "docs.html")
+  );
+  ui.confirmDeleteGroupButton?.addEventListener("click", confirmDeleteGroup);
 }
 
 function toggleGroupDropdown(force) {
@@ -482,7 +510,7 @@ function renderGroups() {
       button.addEventListener("click", () => {
         const groupId = button.dataset.groupId || null;
         if (state.groupDeleteMode && groupId) {
-          confirmDeleteGroup(groupId);
+          promptDeleteGroup(groupId);
           return;
         }
         state.filters.groupId = groupId;
@@ -515,17 +543,30 @@ function renderGroups() {
 function toggleGroupDeleteMode(force) {
   state.groupDeleteMode =
     typeof force === "boolean" ? force : !state.groupDeleteMode;
+  if (!state.groupDeleteMode) {
+    state.pendingGroupDeleteId = null;
+  } else {
+    ui.groupForm?.classList.remove("visible");
+  }
   renderGroups();
 }
 
-async function confirmDeleteGroup(groupId) {
-  if (!state.session || !groupId) return;
+function promptDeleteGroup(groupId) {
   const group = state.groups.find((entry) => entry.id === groupId);
   if (!group) return;
-  const confirmed = window.confirm(
-    `Delete "${group.name}"? Bookmarks keep their content but lose this label.`
-  );
-  if (!confirmed) return;
+  state.pendingGroupDeleteId = groupId;
+  if (ui.groupDeleteName) {
+    ui.groupDeleteName.textContent = group.name;
+  }
+  openModal("deleteGroupModal");
+}
+
+async function confirmDeleteGroup() {
+  const groupId = state.pendingGroupDeleteId;
+  if (!state.session || !groupId) {
+    closeModal("deleteGroupModal");
+    return;
+  }
   const { error } = await supabase
     .from("groups")
     .delete()
@@ -547,8 +588,10 @@ async function confirmDeleteGroup(groupId) {
     ui.activeGroupLabel.textContent = "All bookmarks";
   }
   state.groupDeleteMode = false;
+  state.pendingGroupDeleteId = null;
   renderGroups();
   renderBookmarks();
+  closeModal("deleteGroupModal");
 }
 
 async function createGroup(name) {
@@ -576,6 +619,9 @@ async function createGroup(name) {
 
 async function fetchBookmarks() {
   if (!state.session) return;
+  state.isLoadingBookmarks = true;
+  state.bookmarkLoadError = null;
+  renderBookmarks();
   const { data, error } = await supabase
     .from("bookmarks")
     .select(
@@ -584,9 +630,12 @@ async function fetchBookmarks() {
     .eq("user_id", state.session.user.id)
     .order("created_at", { ascending: false });
 
+  state.isLoadingBookmarks = false;
+
   if (error) {
     console.error("Failed to load bookmarks", error);
-    ui.bookmarkList.innerHTML = `<li class="empty-state"><p>Unable to load bookmarks.</p></li>`;
+    state.bookmarkLoadError = "Unable to load bookmarks.";
+    renderBookmarks();
     return;
   }
 
@@ -606,6 +655,18 @@ function normalizeBookmark(raw) {
 
 function renderBookmarks() {
   if (!ui.bookmarkList) return;
+  if (state.isLoadingBookmarks) {
+    ui.bookmarkList.innerHTML = `
+      <li class="loading-state">
+        <span class="spinner"></span>
+        <span>Loading bookmarks…</span>
+      </li>`;
+    return;
+  }
+  if (state.bookmarkLoadError) {
+    ui.bookmarkList.innerHTML = `<li class="empty-state"><p>${state.bookmarkLoadError}</p></li>`;
+    return;
+  }
   const { search, groupId } = state.filters;
   const filtered = state.bookmarks.filter((bookmark) => {
     const matchesGroup = !groupId || bookmark.group_id === groupId;
@@ -639,31 +700,32 @@ function renderBookmarkRow(bookmark) {
   const iconMarkup = createIconMarkup(bookmark);
   const url = bookmark.url || (bookmark.type === "link" ? bookmark.content : "");
   const domain = url ? safeHostname(url) : "";
+  const domainChip = domain
+    ? `<span class="bookmark-domain">${domain}</span>`
+    : "";
+  const groupChip = bookmark.groupName
+    ? `<span class="tag">${escapeHtml(bookmark.groupName)}</span>`
+    : "";
+  const metaInline =
+    domainChip || groupChip
+      ? `<span class="bookmark-meta-inline">${domainChip}${groupChip}</span>`
+      : "";
+  const titleMarkup =
+    bookmark.type === "link"
+      ? `<a class="bookmark-title" href="${url}" target="_blank" rel="noreferrer">${escapeHtml(
+          bookmark.title || domain || "Untitled link"
+        )}</a>`
+      : `<p class="bookmark-title">${escapeHtml(
+          bookmark.title || "Saved note"
+        )}</p>`;
   return `
     <li class="bookmark-row" data-bookmark-id="${bookmark.id}">
       <div class="bookmark-main">
         ${iconMarkup}
         <div class="bookmark-copy">
-          ${
-            bookmark.type === "link"
-              ? `<a class="bookmark-title" href="${url}" target="_blank" rel="noreferrer">${escapeHtml(
-                  bookmark.title || domain || "Untitled link"
-                )}</a>`
-              : `<p class="bookmark-title">${escapeHtml(
-                  bookmark.title || "Saved note"
-                )}</p>`
-          }
-          <div class="bookmark-meta">
-            ${
-              domain
-                ? `<span aria-label="Domain">${domain}</span>`
-                : "<span>Note</span>"
-            }
-            ${
-              bookmark.groupName
-                ? `<span class="tag">${escapeHtml(bookmark.groupName)}</span>`
-                : ""
-            }
+          <div class="bookmark-line">
+            ${titleMarkup}
+            ${metaInline}
           </div>
         </div>
       </div>
@@ -698,14 +760,12 @@ function createIconMarkup(bookmark) {
   if (bookmark.type === "link") {
     const url = bookmark.url || bookmark.content;
     const domain = safeHostname(url);
-    const favicon = domain
-      ? `https://www.google.com/s2/favicons?sz=64&domain=${domain}`
-      : "";
+    const favicon = resolveFaviconUrl(url);
     return `
       <div class="bookmark-icon">
         ${
           favicon
-            ? `<img src="${favicon}" alt="${domain} favicon" loading="lazy" />`
+            ? `<img src="${favicon}" alt="${domain} favicon" loading="lazy" onerror="this.replaceWith('🌐')" />`
             : "<span>🌐</span>"
         }
       </div>
@@ -945,6 +1005,10 @@ function closeModal(id) {
     enterBookmarkCreateMode();
     ui.bookmarkForm?.reset();
     updatePreview();
+  } else if (id === "deleteGroupModal") {
+    state.pendingGroupDeleteId = null;
+    state.groupDeleteMode = false;
+    renderGroups();
   }
 }
 
@@ -989,6 +1053,16 @@ function safeHostname(url = "") {
 
 function prettifyHostname(hostname = "") {
   return hostname.replace(/^www\./, "");
+}
+
+function resolveFaviconUrl(link = "") {
+  try {
+    const normalized = /^(https?:\/\/)/i.test(link) ? link : `https://${link}`;
+    const url = new URL(normalized);
+    return `${url.origin}/favicon.ico`;
+  } catch (_e) {
+    return null;
+  }
 }
 
 function subscribeToRealtime() {
@@ -1052,6 +1126,60 @@ function waitForInitialSession(timeout = 4000) {
       subscription?.subscription?.unsubscribe();
     }
   });
+}
+
+function cacheSession(session) {
+  if (!hasStorage || !session) return;
+  try {
+    localStorage.setItem(
+      SESSION_CACHE_KEY,
+      JSON.stringify({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      })
+    );
+  } catch (error) {
+    console.warn("Unable to cache session", error);
+  }
+}
+
+async function restoreSessionFromCache() {
+  if (!hasStorage) return null;
+  try {
+    const raw = localStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.access_token || !parsed?.refresh_token) return null;
+    const { data, error } = await supabase.auth.setSession({
+      access_token: parsed.access_token,
+      refresh_token: parsed.refresh_token,
+    });
+    if (error) {
+      clearCachedSession();
+      return null;
+    }
+    return data.session;
+  } catch (error) {
+    console.warn("Unable to restore cached session", error);
+    return null;
+  }
+}
+
+function clearCachedSession() {
+  if (!hasStorage) return;
+  try {
+    localStorage.removeItem(SESSION_CACHE_KEY);
+  } catch (error) {
+    console.warn("Unable to clear cached session", error);
+  }
+}
+
+function clearAuthHash() {
+  if (typeof window === "undefined") return;
+  if (!window.location.hash) return;
+  const url = new URL(window.location.href);
+  url.hash = "";
+  window.history.replaceState({}, "", `${url.pathname}${url.search}`);
 }
 
 function persistLaunchParamsIfNeeded() {
