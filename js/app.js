@@ -54,6 +54,9 @@ const state = {
 };
 
 const ui = {
+  loadingView: document.getElementById("loadingView"),
+  landingView: document.getElementById("landingView"),
+  appView: document.getElementById("appView"),
   bookmarkList: document.getElementById("bookmarkList"),
   searchInput: document.getElementById("searchInput"),
   clearSearchButton: document.getElementById("clearSearchButton"),
@@ -102,8 +105,13 @@ const ui = {
 init();
 
 async function init() {
+  showLoadingView();
   const session = await ensureSession();
-  if (!session) return;
+  if (!session) {
+    showLandingView();
+    return;
+  }
+  showAppView();
   bindGlobalEvents();
   await Promise.all([fetchGroups(), fetchBookmarks()]);
   applyLaunchParams();
@@ -148,9 +156,10 @@ async function fetchSession() {
 function redirectToLanding() {
   if (typeof window === "undefined") return;
   const path = window.location.pathname || "";
-  const alreadyThere =
-    path.endsWith(`/${LANDING_PATH}`) || path.endsWith(LANDING_PATH);
-  if (alreadyThere) return;
+  if (path === LANDING_PATH || path.endsWith("/index.html")) {
+    showLandingView();
+    return;
+  }
   window.location.replace(LANDING_PATH);
 }
 
@@ -178,6 +187,7 @@ function attachAuthGuards() {
       cacheSession(newSession);
       clearAuthHash();
       broadcastAuthState(true);
+      showAppView();
     }
   });
 
@@ -232,6 +242,7 @@ async function refreshSession(options = {}) {
   }
 
   cacheSession(session);
+  showAppView();
   return session;
 }
 
@@ -452,6 +463,7 @@ function bindGlobalEvents() {
   document.addEventListener("keydown", (event) => {
     const hasOpenModal = document.querySelector(".modal[aria-hidden='false']");
     if (hasOpenModal) return;
+    if (document.body.dataset.view !== "app") return;
 
     const isArrowDown = event.key === "ArrowDown";
     const isArrowUp = event.key === "ArrowUp";
@@ -508,6 +520,7 @@ function bindGlobalEvents() {
   });
 
   document.addEventListener("click", (event) => {
+    if (document.body.dataset.view !== "app") return;
     if (state.focusedBookmarkIndex < 0) return;
     if (event.target.closest(".bookmark-row")) return;
     if (event.target.closest(".modal")) return;
@@ -935,6 +948,29 @@ function focusSearchInput(select = false) {
   if (select && typeof ui.searchInput.select === "function") {
     ui.searchInput.select();
   }
+}
+
+function showLandingView() {
+  document.body.dataset.view = "landing";
+  ui.loadingView?.setAttribute("hidden", "true");
+  ui.landingView?.removeAttribute("hidden");
+  ui.appView?.setAttribute("hidden", "true");
+  state.focusedBookmarkIndex = -1;
+  updateBookmarkFocusVisuals();
+}
+
+function showAppView() {
+  document.body.dataset.view = "app";
+  ui.loadingView?.setAttribute("hidden", "true");
+  ui.appView?.removeAttribute("hidden");
+  ui.landingView?.setAttribute("hidden", "true");
+}
+
+function showLoadingView() {
+  document.body.dataset.view = "loading";
+  ui.loadingView?.removeAttribute("hidden");
+  ui.landingView?.setAttribute("hidden", "true");
+  ui.appView?.setAttribute("hidden", "true");
 }
 
 function enterBookmarkCreateMode() {
