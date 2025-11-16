@@ -52,7 +52,7 @@
   --font-geist-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-geist-mono: "Geist Mono", monospace;
   --font-satoshi: "Satoshi", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --bookmark-max-height: calc(100vh - 16rem);
+  --bookmark-max-height: calc(100vh - 20rem);
 }
 
 *,
@@ -103,7 +103,7 @@ body {
 }
 
 body[data-view="app"] {
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 @media (max-width: 768px) {
@@ -117,7 +117,7 @@ body[data-view="app"] {
 
 @media (max-width: 640px) {
   :root {
-    --bookmark-max-height: calc(100dvh - 20rem);
+    --bookmark-max-height: calc(100dvh - 16rem);
   }
 }
 
@@ -151,11 +151,12 @@ body[data-view="app"] .app-view {
 }
 
 .app-view .container {
-  height: 100vh;
-  max-height: 100vh;
+  min-height: 100vh;
+  height: auto;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
+  padding-bottom: 2rem;
 }
 
 .app-header,
@@ -235,17 +236,16 @@ a {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.85rem;
-  background: rgba(255, 255, 255, 0.04);
+  padding: 0.35rem 0.25rem;
+  background: transparent;
   border: none;
-  border-radius: 999px;
+  border-radius: 0;
   color: var(--text-primary);
   font-family: var(--font-geist-mono);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 4px 18px rgba(0, 0, 0, 0.35);
+  transition: color 0.15s ease;
 }
 
 .group-picker-button svg {
@@ -254,8 +254,8 @@ a {
 
 .group-picker-button:hover,
 .group-picker-button:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: var(--foreground);
+  text-decoration: underline;
 }
 
 .group-dropdown {
@@ -509,19 +509,17 @@ a {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 0.85rem;
-  background: rgba(255, 255, 255, 0.04);
+  padding: 0.25rem 0;
+  background: transparent;
   border: none;
-  border-radius: 999px;
+  border-radius: 0;
   cursor: pointer;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 6px 20px rgba(0, 0, 0, 0.35);
+  transition: color 0.15s ease;
 }
 
 .user-chip:hover,
 .user-chip:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 12px 30px rgba(0, 0, 0, 0.45);
+  color: var(--foreground);
 }
 
 .user-chip svg {
@@ -682,6 +680,7 @@ a {
 .bookmark-row {
   position: relative;
   border-radius: 10px;
+  overflow: hidden;
 }
 
 .bookmark-card {
@@ -1093,9 +1092,9 @@ a {
 .swipe-backdrop {
   position: absolute;
   inset: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
-  justify-content: space-between;
   padding: 0.35rem;
   opacity: 0;
   pointer-events: none;
@@ -1109,7 +1108,6 @@ a {
 }
 
 .swipe-pill {
-  flex: 0 0 92px;
   border-radius: 10px;
   font-family: var(--font-geist-mono);
   font-size: 0.7rem;
@@ -1119,103 +1117,25 @@ a {
   align-items: center;
   justify-content: center;
   color: #fff;
-  opacity: calc(0.2 + var(--swipe-intensity, 0) * 0.8);
-  transform: scale(calc(0.95 + var(--swipe-intensity, 0) * 0.05));
+  opacity: 0.25;
+  padding: 0 1rem;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .swipe-pill.edit {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(14, 165, 233, 0.4));
+  justify-content: flex-start;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.45), rgba(14, 165, 233, 0.55));
 }
 
 .swipe-pill.delete {
-  background: linear-gradient(135deg, rgba(248, 113, 113, 0.5), rgba(239, 68, 68, 0.55));
+  justify-content: flex-end;
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.6), rgba(239, 68, 68, 0.7));
 }
 
-.bookmark-row[data-swipe-direction="right"] .swipe-pill.edit {
-  opacity: 1;
-}
-
+.bookmark-row[data-swipe-direction="right"] .swipe-pill.edit,
 .bookmark-row[data-swipe-direction="left"] .swipe-pill.delete {
   opacity: 1;
-}
-
-.bookmark-composer {
-  width: min(820px, calc(100vw - 1.5rem));
-  padding: 1.5rem;
-}
-
-.composer-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(220px, 0.9fr);
-  gap: 1.5rem;
-}
-
-.composer-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.composer-header {
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.modal-eyebrow {
-  font-family: var(--font-geist-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.2em;
-  color: var(--text-secondary);
-  margin-bottom: 0.25rem;
-}
-
-.composer-subtitle {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-top: 0.35rem;
-  line-height: 1.5;
-}
-
-.composer-badges {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.composer-badge {
-  border-radius: 999px;
-  padding: 0.2rem 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-family: var(--font-geist-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-}
-
-#bookmarkModal[data-preview-type="link"] .composer-badge[data-preview-badge="link"],
-#bookmarkModal[data-preview-type="color"] .composer-badge[data-preview-badge="color"],
-#bookmarkModal[data-preview-type="text"] .composer-badge[data-preview-badge="text"] {
-  color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-}
-
-.composer-body {
-  gap: 1.25rem;
-}
-
-.composer-field {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-}
-
-.composer-field textarea {
-  flex: 1;
+  transform: scale(1.02);
 }
 
 .ghost-chip {
@@ -1241,95 +1161,53 @@ a {
   border-style: dashed;
 }
 
-.composer-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+.modal-subtitle {
+  font-family: var(--font-satoshi);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0.35rem 0 0;
+}
+
+.modal-simple {
+  width: min(520px, calc(100vw - 2rem));
+}
+
+.simple-form {
   gap: 1rem;
 }
 
-.composer-helpers {
+.form-inline-actions {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: var(--text-secondary);
-  font-size: 0.78rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
-.composer-helpers p {
-  margin: 0;
-  line-height: 1.4;
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
 }
 
-.composer-actions {
+.modal-actions.simple {
   flex-direction: row;
   align-items: center;
   gap: 0.75rem;
 }
 
-.composer-actions .btn-primary {
+.modal-actions.simple .btn-primary {
   flex: 1;
 }
 
-.composer-actions .btn-danger {
+.modal-actions.simple .btn-danger {
   max-width: 180px;
 }
 
-.composer-preview-panel {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.02);
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.preview-pill {
-  align-self: flex-start;
-  border-radius: 999px;
-  padding: 0.25rem 0.85rem;
-  font-family: var(--font-geist-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.preview-tips {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.preview-tips li {
-  padding-left: 1.25rem;
-  position: relative;
-  line-height: 1.4;
-}
-
-.preview-tips li::before {
-  content: "•";
-  position: absolute;
-  left: 0.35rem;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.1rem 0.35rem;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-family: var(--font-geist-mono);
-  font-size: 0.65rem;
-  margin-right: 0.15rem;
+@media (max-width: 600px) {
+  .modal-actions.simple {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1360,22 +1238,6 @@ kbd {
 
   .bookmark-actions {
     display: none;
-  }
-}
-
-@media (max-width: 900px) {
-  .composer-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .composer-actions {
-    flex-direction: column;
-  }
-
-  .composer-actions .btn-danger,
-  .composer-actions .btn-primary {
-    width: 100%;
-    max-width: none;
   }
 }
 

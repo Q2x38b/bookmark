@@ -39,6 +39,7 @@ const authBroadcast = supportsBroadcast
 let copyToastTimeout = null;
 let pendingUrlPayload = extractLaunchParamsFromUrl();
 let authGuardsAttached = false;
+const realtimeChannels = [];
 
 const state = {
   session: null,
@@ -180,6 +181,7 @@ function attachAuthGuards() {
       state.session = null;
       broadcastAuthState(false);
       clearCachedSession();
+      unsubscribeFromRealtime();
       redirectToLanding();
       return;
     }
@@ -196,30 +198,31 @@ function attachAuthGuards() {
       clearAuthHash();
       broadcastAuthState(true);
       showAppView();
+      subscribeToRealtime();
     }
   });
 
-    if (authBroadcast) {
-      authBroadcast.addEventListener("message", ({ data }) => {
-        if (data?.type !== "auth") return;
-        refreshSession({
-          allowWait: true,
-          redirectOnFailure: data.hasSession === false,
-        });
+  if (authBroadcast) {
+    authBroadcast.addEventListener("message", ({ data }) => {
+      if (data?.type !== "auth") return;
+      refreshSession({
+        allowWait: true,
+        redirectOnFailure: data.hasSession === false,
       });
-    }
+    });
+  }
 
-    window.addEventListener("focus", () =>
-      refreshSession({ allowWait: true, redirectOnFailure: false })
-    );
+  window.addEventListener("focus", () =>
+    refreshSession({ allowWait: true, redirectOnFailure: false })
+  );
 
-    if (AUTH_STORAGE_KEY) {
-      window.addEventListener("storage", (event) => {
-        if (event.key === AUTH_STORAGE_KEY) {
-          refreshSession({ allowWait: true, redirectOnFailure: false });
-        }
-      });
-    }
+  if (AUTH_STORAGE_KEY) {
+    window.addEventListener("storage", (event) => {
+      if (event.key === AUTH_STORAGE_KEY) {
+        refreshSession({ allowWait: true, redirectOnFailure: false });
+      }
+    });
+  }
 }
 
 function broadcastAuthState(hasSession) {
@@ -238,6 +241,7 @@ async function refreshSession(options = {}) {
     if (redirectOnFailure) {
       state.session = null;
       clearCachedSession();
+      unsubscribeFromRealtime();
       redirectToLanding();
     }
     return null;
@@ -250,6 +254,7 @@ async function refreshSession(options = {}) {
     state.session = session;
     hydrateUserChip(session.user);
     await Promise.all([fetchGroups(), fetchBookmarks()]);
+    subscribeToRealtime();
   }
 
   cacheSession(session);
@@ -598,12 +603,7 @@ async function fetchGroups() {
   }
 
   state.groups = data || [];
-  state.bookmarks = state.bookmarks.map((bookmark) => ({
-    ...bookmark,
-    groupName:
-      state.groups.find((group) => group.id === bookmark.group_id)?.name ||
-      null,
-  }));
+  syncBookmarkGroupNames();
   renderGroups();
   renderBookmarks();
 }
@@ -729,12 +729,7 @@ async function confirmDeleteGroup() {
     return;
   }
   state.groups = state.groups.filter((entry) => entry.id !== groupId);
-  state.bookmarks = state.bookmarks.map((bookmark) => ({
-    ...bookmark,
-    groupName:
-      state.groups.find((group) => group.id === bookmark.group_id)?.name ||
-      null,
-  }));
+    syncBookmarkGroupNames();
   if (state.filters.groupId === groupId) {
     state.filters.groupId = null;
     ui.activeGroupLabel.textContent = "All bookmarks";
@@ -779,12 +774,7 @@ async function createGroup(name) {
     return;
   }
   state.groups.push(data);
-  state.bookmarks = state.bookmarks.map((bookmark) => ({
-    ...bookmark,
-    groupName:
-      state.groups.find((group) => group.id === bookmark.group_id)?.name ||
-      null,
-  }));
+  syncBookmarkGroupNames();
   renderGroups();
   renderBookmarks();
   toggleGroupDeleteMode(false);
@@ -1635,37 +1625,130 @@ function resolveFaviconUrl(link = "") {
 
 function subscribeToRealtime() {
   if (!state.session) return;
-  supabase
-    .channel("bookmarks-updates")
+  unsubscribeFromRealtime();
+  const userId = state.session.user.id;
+
+  const bookmarkChannel = supabase
+    .channel(`bookmarks-${userId}`)
     .on(
       "postgres_changes",
       {
         event: "*",
         schema: "public",
         table: "bookmarks",
-        filter: `user_id=eq.${state.session.user.id}`,
+        filter: `user_id=eq.${userId}`,
       },
-      async () => {
-        await fetchBookmarks();
-      }
+      handleBookmarkRealtimeChange
     )
     .subscribe();
 
-  supabase
-    .channel("groups-updates")
+  const groupChannel = supabase
+    .channel(`groups-${userId}`)
     .on(
       "postgres_changes",
       {
         event: "*",
         schema: "public",
         table: "groups",
-        filter: `user_id=eq.${state.session.user.id}`,
+        filter: `user_id=eq.${userId}`,
       },
-      async () => {
-        await fetchGroups();
-      }
+      handleGroupRealtimeChange
     )
     .subscribe();
+
+  realtimeChannels.push(bookmarkChannel, groupChannel);
+}
+
+function unsubscribeFromRealtime() {
+  while (realtimeChannels.length) {
+    const channel = realtimeChannels.pop();
+    if (channel) {
+      supabase.removeChannel(channel);
+    }
+  }
+}
+
+function handleBookmarkRealtimeChange(payload) {
+  if (!payload?.eventType) {
+    return;
+  }
+  const eventType = payload.eventType;
+
+  if (eventType === "DELETE") {
+    const deletedId = payload.old?.id;
+    if (!deletedId) return;
+    state.bookmarks = state.bookmarks.filter(
+      (bookmark) => bookmark.id !== deletedId
+    );
+    if (state.editingBookmarkId === deletedId) {
+      state.editingBookmarkId = null;
+    }
+    renderGroups();
+    renderBookmarks();
+    return;
+  }
+
+  const record = payload.new;
+  if (!record) return;
+  const normalized = normalizeBookmark(record);
+  const existingIndex = state.bookmarks.findIndex(
+    (bookmark) => bookmark.id === normalized.id
+  );
+  if (existingIndex >= 0) {
+    state.bookmarks[existingIndex] = normalized;
+  } else {
+    state.bookmarks = [normalized, ...state.bookmarks];
+  }
+  state.bookmarks.sort(
+    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+  );
+  if (eventType === "INSERT") {
+    renderGroups();
+  }
+  renderBookmarks();
+}
+
+function handleGroupRealtimeChange(payload) {
+  if (!payload?.eventType) return;
+  const eventType = payload.eventType;
+
+  if (eventType === "DELETE") {
+    const deletedId = payload.old?.id;
+    if (!deletedId) return;
+    state.groups = state.groups.filter((group) => group.id !== deletedId);
+    if (state.filters.groupId === deletedId) {
+      state.filters.groupId = null;
+      if (ui.activeGroupLabel) {
+        ui.activeGroupLabel.textContent = "All bookmarks";
+      }
+    }
+  } else {
+    const record = payload.new;
+    if (!record) return;
+    const existingIndex = state.groups.findIndex(
+      (group) => group.id === record.id
+    );
+    if (existingIndex >= 0) {
+      state.groups[existingIndex] = record;
+    } else {
+      state.groups.push(record);
+    }
+    state.groups.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  syncBookmarkGroupNames();
+  renderGroups();
+  renderBookmarks();
+}
+
+function syncBookmarkGroupNames() {
+  if (!state.bookmarks.length) return;
+  state.bookmarks = state.bookmarks.map((bookmark) => ({
+    ...bookmark,
+    groupName:
+      state.groups.find((group) => group.id === bookmark.group_id)?.name ||
+      null,
+  }));
 }
 
 function waitForInitialSession(timeout = 4000) {
