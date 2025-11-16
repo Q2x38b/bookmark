@@ -450,47 +450,68 @@ function bindGlobalEvents() {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
     const hasOpenModal = document.querySelector(".modal[aria-hidden='false']");
     if (hasOpenModal) return;
-    if (!state.visibleBookmarks.length && event.key === "ArrowDown") return;
 
-    if (event.key === "ArrowDown") {
-      if (document.activeElement === ui.searchInput) {
-        event.preventDefault();
-        const nextIndex =
-          state.focusedBookmarkIndex >= 0
-            ? Math.min(
-                state.focusedBookmarkIndex + 1,
-                state.visibleBookmarks.length - 1
-              )
-            : 0;
-        setFocusedBookmarkIndex(nextIndex, { scrollIntoView: true });
-        return;
-      }
-      if (state.focusedBookmarkIndex >= 0) {
-        event.preventDefault();
-        const nextIndex = Math.min(
-          state.focusedBookmarkIndex + 1,
-          state.visibleBookmarks.length - 1
-        );
-        setFocusedBookmarkIndex(nextIndex, { scrollIntoView: true });
-      }
+    const isArrowDown = event.key === "ArrowDown";
+    const isArrowUp = event.key === "ArrowUp";
+    const isEnter = event.key === "Enter";
+
+    if ((isArrowDown || isArrowUp) && !state.visibleBookmarks.length) {
       return;
     }
 
-    if (event.key === "ArrowUp") {
-      if (state.focusedBookmarkIndex > 0) {
-        event.preventDefault();
-        setFocusedBookmarkIndex(state.focusedBookmarkIndex - 1, {
+    if (isArrowDown) {
+      event.preventDefault();
+      if (state.focusedBookmarkIndex === -1) {
+        setFocusedBookmarkIndex(0, { scrollIntoView: true });
+        return;
+      }
+      const nextIndex = Math.min(
+        state.focusedBookmarkIndex + 1,
+        state.visibleBookmarks.length - 1
+      );
+      setFocusedBookmarkIndex(nextIndex, { scrollIntoView: true });
+      return;
+    }
+
+    if (isArrowUp) {
+      event.preventDefault();
+      if (state.focusedBookmarkIndex === -1) {
+        setFocusedBookmarkIndex(state.visibleBookmarks.length - 1, {
           scrollIntoView: true,
         });
-      } else if (state.focusedBookmarkIndex === 0) {
-        event.preventDefault();
+        return;
+      }
+      if (state.focusedBookmarkIndex === 0) {
         setFocusedBookmarkIndex(-1);
         focusSearchInput(true);
+        return;
+      }
+      setFocusedBookmarkIndex(state.focusedBookmarkIndex - 1, {
+        scrollIntoView: true,
+      });
+      return;
+    }
+
+    if (isEnter && state.focusedBookmarkIndex >= 0) {
+      const bookmark = state.visibleBookmarks[state.focusedBookmarkIndex];
+      if (!bookmark) return;
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        openBookmarkLink(bookmark);
+      } else {
+        event.preventDefault();
+        copyBookmarkContent(bookmark);
       }
     }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (state.focusedBookmarkIndex < 0) return;
+    if (event.target.closest(".bookmark-row")) return;
+    if (event.target.closest(".modal")) return;
+    setFocusedBookmarkIndex(-1);
   });
 
   updatePreview();
@@ -986,6 +1007,13 @@ function showCopyToast(message) {
   copyToastTimeout = setTimeout(() => {
     ui.copyToast?.classList.remove("show");
   }, 1600);
+}
+
+function openBookmarkLink(bookmark) {
+  if (bookmark.type !== "link") return;
+  const targetUrl = bookmark.url || bookmark.content;
+  if (!targetUrl) return;
+  window.open(targetUrl, "_blank", "noopener");
 }
 
 function createIconMarkup(bookmark) {
