@@ -54,6 +54,9 @@ const ui = {
   groupForm: document.getElementById("groupForm"),
   groupNameInput: document.getElementById("groupNameInput"),
   openGroupCreator: document.getElementById("openGroupCreator"),
+  openGroupDeleter: document.getElementById("openGroupDeleter"),
+  groupDeleteMenu: document.getElementById("groupDeleteMenu"),
+  groupDeleteOptions: document.getElementById("groupDeleteOptions"),
   activeGroupLabel: document.getElementById("activeGroupLabel"),
   groupSelect: document.getElementById("bookmarkGroup"),
   openBookmarkModal: document.getElementById("openBookmarkModal"),
@@ -196,16 +199,23 @@ async function refreshSession() {
 }
 
 function hydrateUserChip(user) {
-  const initials = user.email
-    ? user.email
-        .split("@")[0]
-        .split(".")
-        .map((chunk) => chunk[0]?.toUpperCase() || "")
-        .join("")
-        .slice(0, 2)
-    : "B";
+  // Use Google avatar if available
+  const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
+  
   if (ui.userAvatar) {
-    ui.userAvatar.textContent = initials || "B";
+    if (avatarUrl) {
+      ui.userAvatar.innerHTML = `<img src="${avatarUrl}" alt="Profile" style="width: 100%; height: 100%; border-radius: 4px; object-fit: cover;" />`;
+    } else {
+      const initials = user.email
+        ? user.email
+            .split("@")[0]
+            .split(".")
+            .map((chunk) => chunk[0]?.toUpperCase() || "")
+            .join("")
+            .slice(0, 2)
+        : "B";
+      ui.userAvatar.textContent = initials || "B";
+    }
   }
   if (ui.userName) {
     ui.userName.textContent = user.user_metadata?.full_name || "BMarks user";
@@ -257,9 +267,18 @@ function bindGlobalEvents() {
   });
 
   ui.openGroupCreator?.addEventListener("click", () => {
+    ui.groupDeleteMenu?.classList.add("is-hidden");
     ui.groupForm?.classList.toggle("visible");
     if (ui.groupForm?.classList.contains("visible")) {
       ui.groupNameInput?.focus();
+    }
+  });
+
+  ui.openGroupDeleter?.addEventListener("click", () => {
+    ui.groupForm?.classList.remove("visible");
+    ui.groupDeleteMenu?.classList.toggle("is-hidden");
+    if (!ui.groupDeleteMenu?.classList.contains("is-hidden")) {
+      renderGroupDeleteOptions();
     }
   });
 
@@ -488,6 +507,70 @@ async function createGroup(name) {
       state.groups.find((group) => group.id === bookmark.group_id)?.name ||
       null,
   }));
+  renderGroups();
+  renderBookmarks();
+}
+
+function renderGroupDeleteOptions() {
+  if (!ui.groupDeleteOptions) return;
+  
+  if (state.groups.length === 0) {
+    ui.groupDeleteOptions.innerHTML = `<p style="font-family: var(--font-geist-mono); font-size: 0.7rem; color: var(--text-secondary); padding: 0.5rem;">No groups to delete</p>`;
+    return;
+  }
+  
+  ui.groupDeleteOptions.innerHTML = state.groups
+    .map(
+      (group) =>
+        `<button type="button" class="group-delete-option" data-group-id="${group.id}">
+          <span>${escapeHtml(group.name)}</span>
+          <span style="font-family: var(--font-geist-mono); font-size: 0.7rem; opacity: 0.6;">×</span>
+        </button>`
+    )
+    .join("");
+  
+  // Add event listeners to delete buttons
+  ui.groupDeleteOptions.querySelectorAll(".group-delete-option").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const groupId = btn.dataset.groupId;
+      await deleteGroup(groupId);
+    });
+  });
+}
+
+async function deleteGroup(groupId) {
+  if (!state.session || !groupId) return;
+  
+  const group = state.groups.find((g) => g.id === groupId);
+  if (!group) return;
+  
+  const confirmed = window.confirm(`Delete group "${group.name}"? Bookmarks in this group will not be deleted.`);
+  if (!confirmed) return;
+  
+  const { error } = await supabase
+    .from("groups")
+    .delete()
+    .eq("id", groupId)
+    .eq("user_id", state.session.user.id);
+  
+  if (error) {
+    console.error("Failed to delete group", error);
+    return;
+  }
+  
+  state.groups = state.groups.filter((g) => g.id !== groupId);
+  state.bookmarks = state.bookmarks.map((bookmark) => ({
+    ...bookmark,
+    groupName:
+      state.groups.find((group) => group.id === bookmark.group_id)?.name ||
+      null,
+  }));
+  
+  if (state.filters.groupId === groupId) {
+    state.filters.groupId = null;
+  }
+  
+  ui.groupDeleteMenu?.classList.add("is-hidden");
   renderGroups();
   renderBookmarks();
 }
@@ -775,7 +858,13 @@ function detectContent(value) {
 
 async function resolveTitle(detected) {
   if (detected.type === "link" && detected.url) {
-    return prettifyHostname(detected.hostname) || detected.url;
+    try {
+      const title = await fetchPageTitle(detected.url);
+      return title || prettifyHostname(detected.hostname) || detected.url;
+    } catch (error) {
+      console.warn("Failed to fetch page title:", error);
+      return prettifyHostname(detected.hostname) || detected.url;
+    }
   }
   if (detected.type === "color") {
     return detected.color;
@@ -783,16 +872,61 @@ async function resolveTitle(detected) {
   return null;
 }
 
-function updatePreview() {
+async function fetchPageTitle(url) {
+  try {
+    // Use AllOrigins CORS proxy to fetch the page
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const response = await fetch(proxyUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to fetch');
+    
+    const data = await response.json();
+    const html = data.contents;
+    
+    // Extract title from HTML
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch && titleMatch[1]) {
+      return titleMatch[1].trim();
+    }
+    
+    // Try og:title as fallback
+    const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
+    if (ogTitleMatch && ogTitleMatch[1]) {
+      return ogTitleMatch[1].trim();
+    }
+    
+    return null;
+  } catch (error) {
+    console.warn("Error fetching page title:", error);
+    return null;
+  }
+}
+
+async function updatePreview() {
   if (!ui.previewCard) return;
   const content = ui.bookmarkContent.value.trim();
   const detected = detectContent(content);
   const manualTitle = ui.bookmarkTitle.value.trim();
-  const title = manualTitle || autoPreviewTitle(detected);
+  
   const titleNode = ui.previewCard.querySelector(".preview-title");
   const metaNode = ui.previewCard.querySelector(".preview-meta");
   const icon = ui.previewCard.querySelector(".preview-icon");
   if (!titleNode || !metaNode || !icon) return;
+  
+  // Set initial title
+  let title = manualTitle;
+  if (!title && detected.type === "link") {
+    titleNode.textContent = "Loading title…";
+    title = await autoPreviewTitle(detected);
+  } else if (!title) {
+    title = detected.type === "color" ? detected.color : "Add a title";
+  }
+  
   titleNode.textContent = title;
   metaNode.textContent =
     detected.type === "link"
@@ -818,9 +952,14 @@ function updatePreview() {
   }
 }
 
-function autoPreviewTitle(detected) {
+async function autoPreviewTitle(detected) {
   if (detected.type === "link") {
-    return prettifyHostname(detected.hostname) || "Loading title…";
+    try {
+      const title = await fetchPageTitle(detected.url);
+      return title || prettifyHostname(detected.hostname) || "Loading title…";
+    } catch (error) {
+      return prettifyHostname(detected.hostname) || "Loading title…";
+    }
   }
   if (detected.type === "color") {
     return detected.color;

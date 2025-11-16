@@ -251,6 +251,31 @@ a {
   opacity: 0.7;
 }
 
+.group-dropdown-separator {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0.5rem 0;
+}
+
+.group-action-btn {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-geist-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  border-radius: 4px;
+}
+
+.group-action-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
 .group-form {
   padding: 0.5rem;
   border-top: 1px solid var(--border-subtle);
@@ -260,6 +285,38 @@ a {
 
 .group-form.visible {
   display: block;
+}
+
+.group-delete-menu {
+  padding: 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 0.5rem;
+}
+
+.group-delete-menu.is-hidden {
+  display: none;
+}
+
+.group-delete-option {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.group-delete-option:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .group-form input {
@@ -334,7 +391,7 @@ a {
 
 .add-bookmark-btn {
   position: absolute;
-  left: -0.25rem;
+  left: 0.15rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -378,7 +435,7 @@ a {
   gap: 0.5rem;
   padding: 0.375rem 0.75rem;
   background: transparent;
-  border: 1px solid var(--border-color);
+  border: none;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -440,6 +497,14 @@ a {
   background: var(--hover-bg);
 }
 
+.user-menu-signout {
+  color: #ef4444;
+}
+
+.user-menu-signout:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
 /* Bookmarks List */
 .bookmarks-section {
   margin-top: 2rem;
@@ -477,7 +542,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.55rem 0.75rem;
+  padding: 0.35rem 0.65rem;
   background: transparent;
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
@@ -492,9 +557,9 @@ a {
 
 .bookmark-date {
   font-family: var(--font-geist-mono);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-secondary);
-  min-width: 90px;
+  min-width: 80px;
   text-align: right;
 }
 
@@ -507,9 +572,9 @@ a {
 }
 
 .bookmark-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -517,8 +582,8 @@ a {
 }
 
 .bookmark-icon img {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
 }
 
@@ -529,12 +594,12 @@ a {
 
 .bookmark-title {
   font-family: var(--font-satoshi);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-primary);
   text-decoration: none;
   display: block;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.15rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -549,7 +614,7 @@ a {
   align-items: center;
   gap: 0.5rem;
   font-family: var(--font-geist-mono);
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: var(--text-secondary);
 }
 
@@ -585,16 +650,17 @@ a {
 }
 
 .modal-content {
-  width: 500px;
+  width: 480px;
   max-width: 90vw;
   max-height: 90vh;
   background: var(--background);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 1.25rem;
   overflow-y: auto;
   transform: scale(0.97);
   transition: transform 0.2s ease;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
 .modal[aria-hidden="false"] .modal-content {
@@ -605,14 +671,14 @@ a {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .modal-title {
   font-family: var(--font-satoshi);
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -636,18 +702,18 @@ a {
 .modal-body {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .form-label {
   font-family: var(--font-geist-mono);
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -658,13 +724,13 @@ a {
 .form-select,
 .form-textarea {
   width: 100%;
-  padding: 0.75rem;
-  background: transparent;
+  padding: 0.65rem 0.75rem;
+  background: var(--border-subtle);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   color: var(--text-primary);
   font-family: var(--font-geist-sans);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   transition: all 0.15s ease;
 }
 
@@ -682,27 +748,27 @@ a {
 }
 
 .preview-card {
-  padding: 1rem;
-  background: var(--border-subtle);
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .preview-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 5px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
 }
 
 .preview-icon img {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
 }
 
 .preview-details {
@@ -712,10 +778,10 @@ a {
 
 .preview-title {
   font-family: var(--font-satoshi);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-primary);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -723,51 +789,53 @@ a {
 
 .preview-meta {
   font-family: var(--font-geist-mono);
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: var(--text-secondary);
 }
 
 .btn-primary {
   width: 100%;
-  padding: 0.75rem;
-  background: var(--hover-bg);
-  border: 1px solid var(--border-color);
+  padding: 0.65rem;
+  background: var(--text-primary);
+  border: 1px solid var(--text-primary);
   border-radius: 6px;
-  color: var(--text-primary);
+  color: var(--background);
   font-family: var(--font-geist-mono);
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.8125rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-primary:hover {
-  background: var(--border-subtle);
-  border-color: var(--text-secondary);
+  background: var(--foreground);
+  border-color: var(--foreground);
 }
 
 .modal-actions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
 }
 
 .btn-danger {
   width: 100%;
   padding: 0.65rem;
   border-radius: 6px;
-  border: 1px solid rgba(239, 68, 68, 0.45);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   background: transparent;
-  color: #fca5a5;
+  color: #ef4444;
   font-family: var(--font-geist-mono);
-  font-size: 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-danger:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.7);
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
 }
 
 .is-hidden {

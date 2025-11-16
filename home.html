@@ -25,11 +25,17 @@
             
             <div class="group-dropdown" id="groupDropdown">
               <div id="groupOptions"></div>
-              <button type="button" id="openGroupCreator" style="width: 100%; padding: 0.5rem; background: transparent; border: none; color: var(--text-secondary); font-family: var(--font-geist-mono); font-size: 0.75rem; cursor: pointer; text-align: left;">+ New group</button>
+              <div class="group-dropdown-separator"></div>
+              <button type="button" id="openGroupCreator" class="group-action-btn">+ New group</button>
+              <button type="button" id="openGroupDeleter" class="group-action-btn">🗑 Delete group</button>
               <form class="group-form" id="groupForm">
                 <input id="groupNameInput" name="groupName" placeholder="Group name" autocomplete="off" required />
                 <button type="submit">Create</button>
               </form>
+              <div class="group-delete-menu is-hidden" id="groupDeleteMenu">
+                <p style="font-family: var(--font-geist-mono); font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Select group to delete:</p>
+                <div id="groupDeleteOptions"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -50,8 +56,8 @@
             <button type="button" class="user-menu-item" id="accountSettingsBtn">Account settings</button>
             <button type="button" class="user-menu-item" id="preferencesBtn">Preferences</button>
             <button type="button" class="user-menu-item" id="shortcutsBtn">Keyboard shortcuts</button>
-            <hr />
-            <button type="button" class="user-menu-item" id="signOutBtn">Sign out</button>
+            <div style="height: 1px; background: var(--border-subtle); margin: 0.5rem 0;"></div>
+            <button type="button" class="user-menu-item user-menu-signout" id="signOutBtn">Sign out</button>
           </div>
         </div>
       </header>
