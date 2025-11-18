@@ -36,12 +36,24 @@ const hasStorage =
 const authBroadcast = supportsBroadcast
   ? new BroadcastChannel("bmarks-auth")
   : null;
+const dataBroadcast = supportsBroadcast
+  ? new BroadcastChannel("bmarks-data")
+  : null;
+const clientId =
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 let copyToastTimeout = null;
 let pendingUrlPayload = extractLaunchParamsFromUrl();
 let authGuardsAttached = false;
 const realtimeChannels = [];
 let realtimeRetryTimer = null;
 const REALTIME_RETRY_DELAY = 4000;
+let pendingDataResync = null;
+let lastDataResyncAt = 0;
+const DATA_RESYNC_COOLDOWN = 1500;
+let passiveResyncTimer = null;
+const PASSIVE_RESYNC_INTERVAL = 30000;
 
 const state = {
   session: null,
@@ -113,6 +125,13 @@ const ui = {
     bookmarkFormReset: document.getElementById("bookmarkFormReset"),
 };
 
+dataBroadcast?.addEventListener("message", ({ data }) => {
+  if (!data || data.clientId === clientId) return;
+  if (data.type === "bookmarks:changed" || data.type === "groups:changed") {
+    queueDataResync({ force: true });
+  }
+});
+
 init();
 
 async function init() {
@@ -151,6 +170,7 @@ async function ensureSession() {
   cacheSession(session);
   clearAuthHash();
   attachAuthGuards();
+  startPassiveResync();
   return session;
 }
 
@@ -184,6 +204,7 @@ function attachAuthGuards() {
       broadcastAuthState(false);
       clearCachedSession();
       unsubscribeFromRealtime();
+      stopPassiveResync();
       redirectToLanding();
       return;
     }
@@ -201,30 +222,36 @@ function attachAuthGuards() {
       broadcastAuthState(true);
       showAppView();
       subscribeToRealtime();
+      startPassiveResync();
     }
   });
 
-  if (authBroadcast) {
-    authBroadcast.addEventListener("message", ({ data }) => {
-      if (data?.type !== "auth") return;
-      refreshSession({
-        allowWait: true,
-        redirectOnFailure: data.hasSession === false,
+    if (authBroadcast) {
+      authBroadcast.addEventListener("message", ({ data }) => {
+        if (data?.type !== "auth") return;
+        refreshSession({
+          allowWait: true,
+          redirectOnFailure: data.hasSession === false,
+        });
       });
-    });
-  }
+    }
 
-  window.addEventListener("focus", () =>
-    refreshSession({ allowWait: true, redirectOnFailure: false })
-  );
+    window.addEventListener("focus", () =>
+      refreshSession({ allowWait: true, redirectOnFailure: false }).finally(() =>
+        queueDataResync({ force: true })
+      )
+    );
 
-  if (AUTH_STORAGE_KEY) {
-    window.addEventListener("storage", (event) => {
-      if (event.key === AUTH_STORAGE_KEY) {
-        refreshSession({ allowWait: true, redirectOnFailure: false });
-      }
-    });
-  }
+    if (AUTH_STORAGE_KEY) {
+      window.addEventListener("storage", (event) => {
+        if (event.key === AUTH_STORAGE_KEY) {
+          refreshSession({
+            allowWait: true,
+            redirectOnFailure: false,
+          }).finally(() => queueDataResync({ force: true }));
+        }
+      });
+    }
 }
 
 function broadcastAuthState(hasSession) {
@@ -244,7 +271,10 @@ async function refreshSession(options = {}) {
       state.session = null;
       clearCachedSession();
       unsubscribeFromRealtime();
+      stopPassiveResync();
       redirectToLanding();
+    } else {
+      stopPassiveResync();
     }
     return null;
   }
@@ -261,6 +291,7 @@ async function refreshSession(options = {}) {
 
   cacheSession(session);
   showAppView();
+  startPassiveResync();
   return session;
 }
 
@@ -564,13 +595,15 @@ function bindGlobalEvents() {
   updatePreview();
   enterBookmarkCreateMode();
 
-  document.getElementById("preferencesBtn")?.addEventListener("click", () =>
-    window.alert("Preferences are coming soon.")
-  );
-  document.getElementById("shortcutsBtn")?.addEventListener("click", () =>
-    window.alert("Keyboard shortcuts coming soon.")
-  );
-  ui.confirmDeleteGroupButton?.addEventListener("click", confirmDeleteGroup);
+    document.getElementById("preferencesBtn")?.addEventListener("click", () =>
+      window.alert("Preferences are coming soon.")
+    );
+    document.getElementById("shortcutsBtn")?.addEventListener("click", () =>
+      window.alert("Keyboard shortcuts coming soon.")
+    );
+    ui.confirmDeleteGroupButton?.addEventListener("click", confirmDeleteGroup);
+    document.addEventListener("visibilitychange", handleVisibilityResync);
+    window.addEventListener("online", () => queueDataResync({ force: true }));
 }
 
 function toggleGroupDropdown(force) {
@@ -742,6 +775,7 @@ async function confirmDeleteGroup() {
   renderGroups();
   renderBookmarks();
   closeModal("deleteGroupModal");
+  notifyDataChange("groups:changed");
 }
 
 function promptDeleteBookmark(bookmark) {
@@ -780,6 +814,7 @@ async function createGroup(name) {
   renderGroups();
   renderBookmarks();
   toggleGroupDeleteMode(false);
+  notifyDataChange("groups:changed");
 }
 
 async function fetchBookmarks() {
@@ -1285,6 +1320,7 @@ async function deleteBookmarkById(bookmarkId) {
   renderGroups();
   ui.bookmarkForm?.reset();
   enterBookmarkCreateMode();
+  notifyDataChange("bookmarks:changed");
 }
 
 async function copyBookmarkContent(bookmark) {
@@ -1389,6 +1425,7 @@ async function handleBookmarkSubmit(event) {
 
   const detected = detectContent(content);
   let title = ui.bookmarkTitle.value.trim();
+  let bookmarkMutationOccurred = false;
 
   if (!title) {
     title = await resolveTitle(detected);
@@ -1420,9 +1457,7 @@ async function handleBookmarkSubmit(event) {
       metadata: {
         domain: detected.hostname || null,
         gradient:
-          detected.type === "text"
-            ? gradientFromString(content)
-            : undefined,
+          detected.type === "text" ? gradientFromString(content) : undefined,
       },
     };
 
@@ -1443,6 +1478,7 @@ async function handleBookmarkSubmit(event) {
       state.bookmarks = state.bookmarks.map((bookmark) =>
         bookmark.id === record.id ? normalizeBookmark(record) : bookmark
       );
+      bookmarkMutationOccurred = true;
     } else {
       const insertPayload = {
         user_id: state.session.user.id,
@@ -1460,12 +1496,16 @@ async function handleBookmarkSubmit(event) {
       }
       record = data;
       state.bookmarks = [normalizeBookmark(record), ...state.bookmarks];
+      bookmarkMutationOccurred = true;
     }
 
     renderBookmarks();
     ui.bookmarkForm.reset();
     enterBookmarkCreateMode();
     updatePreview();
+    if (bookmarkMutationOccurred) {
+      notifyDataChange("bookmarks:changed");
+    }
   } finally {
     state.isSavingBookmark = false;
     ui.saveBookmarkButton?.removeAttribute("disabled");
@@ -1764,6 +1804,57 @@ function clearRealtimeRetry() {
   realtimeRetryTimer = null;
 }
 
+function notifyDataChange(topic) {
+  if (!dataBroadcast) return;
+  dataBroadcast.postMessage({
+    type: topic,
+    clientId,
+    timestamp: Date.now(),
+  });
+}
+
+function queueDataResync(options = {}) {
+  if (!state.session) return null;
+  const { force = false } = options;
+  if (pendingDataResync) {
+    return pendingDataResync;
+  }
+  const now = Date.now();
+  if (!force && now - lastDataResyncAt < DATA_RESYNC_COOLDOWN) {
+    return null;
+  }
+  pendingDataResync = Promise.all([fetchGroups(), fetchBookmarks()])
+    .catch((error) => {
+      console.warn("Failed to refresh data", error);
+    })
+    .finally(() => {
+      lastDataResyncAt = Date.now();
+      pendingDataResync = null;
+    });
+  return pendingDataResync;
+}
+
+function handleVisibilityResync() {
+  if (typeof document === "undefined") return;
+  if (document.visibilityState === "visible") {
+    queueDataResync();
+  }
+}
+
+function startPassiveResync() {
+  if (passiveResyncTimer || typeof window === "undefined") return;
+  passiveResyncTimer = window.setInterval(() => {
+    if (!state.session) return;
+    queueDataResync();
+  }, PASSIVE_RESYNC_INTERVAL);
+}
+
+function stopPassiveResync() {
+  if (!passiveResyncTimer) return;
+  clearInterval(passiveResyncTimer);
+  passiveResyncTimer = null;
+}
+
 function handleBookmarkRealtimeChange(payload) {
   if (!payload?.eventType) {
     return;
@@ -1855,21 +1946,19 @@ function syncBookmarkGroupNames() {
 function waitForInitialSession(timeout = 4000) {
   return new Promise((resolve) => {
     let settled = false;
-    const timer = setTimeout(() => {
+    const finish = (session) => {
       if (settled) return;
       settled = true;
+      clearTimeout(timer);
       cleanup();
-      resolve(null);
-    }, timeout);
+      resolve(session);
+    };
+    const timer = setTimeout(() => finish(null), timeout);
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (event === "INITIAL_SESSION") {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          cleanup();
-          resolve(session);
+        if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
+          finish(session);
         }
       }
     );
