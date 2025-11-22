@@ -106,8 +106,7 @@
                     Delete group
                   </button>
                 </div>
-                <form class="group-form" id="groupForm">
-                  <div class="group-form-row">
+                  <form class="group-form" id="groupForm">
                     <input
                       type="text"
                       id="groupNameInput"
@@ -126,9 +125,8 @@
                         aria-label="Group color"
                       />
                     </label>
-                  </div>
-                  <button type="submit">Create</button>
-                </form>
+                    <button type="submit">Create</button>
+                  </form>
               </div>
             </div>
           </div>
@@ -280,13 +278,70 @@
                 placeholder="Auto-fills for links"
               />
             </div>
-            <div class="form-group">
-              <label class="form-label" for="bookmarkGroup">Group</label>
-              <select id="bookmarkGroup" class="form-select" name="group">
-                <option value="">No group</option>
-              </select>
-            </div>
+              <div class="form-group">
+                <label class="form-label" for="bookmarkGroupTrigger">Group</label>
+                <div class="combo-field" id="bookmarkGroupControl" data-open="false">
+                  <button
+                    type="button"
+                    class="combo-trigger"
+                    id="bookmarkGroupTrigger"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                  >
+                    <span id="bookmarkGroupTriggerLabel">No group</span>
+                    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+                      <path
+                        d="M3 5l4 4 4-4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <div class="combo-panel" id="bookmarkGroupMenu" role="listbox" aria-label="Bookmark group">
+                    <div class="combo-search-row">
+                      <input
+                        type="search"
+                        id="bookmarkGroupSearch"
+                        class="combo-search"
+                        placeholder="Search groups"
+                        autocomplete="off"
+                      />
+                    </div>
+                    <div class="combo-options" id="bookmarkGroupList">
+                      <p class="combo-empty">No groups yet</p>
+                    </div>
+                  </div>
+                </div>
+                <select id="bookmarkGroup" class="visually-hidden" name="group">
+                  <option value="">No group</option>
+                </select>
+              </div>
           </div>
+            <div class="form-group">
+              <label class="form-label" for="bookmarkAttachmentInput">Media</label>
+              <div class="attachment-zone" id="bookmarkAttachmentZone" data-has-file="false">
+                <input type="file" accept="image/*" id="bookmarkAttachmentInput" hidden />
+                <div class="attachment-dropcopy">
+                  <p>Drag an image anywhere or</p>
+                  <button type="button" class="ghost-chip" id="bookmarkAttachmentButton">Browse files</button>
+                </div>
+                <div class="attachment-preview" id="bookmarkAttachmentPreview" hidden>
+                  <div class="attachment-preview-media">
+                    <img id="bookmarkAttachmentPreviewImage" alt="Selected attachment preview" />
+                  </div>
+                  <div class="attachment-preview-details">
+                    <p class="attachment-name" id="bookmarkAttachmentFileName"></p>
+                    <p class="attachment-meta" id="bookmarkAttachmentColor"></p>
+                  </div>
+                  <button type="button" class="ghost-chip tertiary" id="bookmarkAttachmentRemove">
+                    Remove image
+                  </button>
+                </div>
+              </div>
+            </div>
 
           <div class="modal-actions simple">
             <button type="submit" class="btn-primary" id="bookmarkSubmitButton">Save Bookmark</button>

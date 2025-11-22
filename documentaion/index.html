@@ -54,15 +54,24 @@
         letter-spacing: 0.2em;
         color: var(--text-secondary);
       }
-      .docs-content section {
+        .docs-section {
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 14px;
         padding: 1.25rem 1.5rem;
         background: rgba(0, 0, 0, 0.2);
       }
-      .docs-content section + section {
+        .docs-section + .docs-section {
         margin-top: 1rem;
       }
+        .docs-steps {
+          margin: 0 0 0.5rem 1.25rem;
+          padding: 0;
+          color: var(--text-secondary);
+          line-height: 1.5;
+        }
+        .docs-steps li + li {
+          margin-top: 0.35rem;
+        }
       .docs-content h2 {
         margin: 0 0 0.75rem;
         font-size: 1rem;
@@ -137,63 +146,96 @@
   <body>
     <main class="docs-wrapper">
       <a href="/" class="docs-back">← Back</a>
-      <header class="docs-hero">
-        <p class="docs-eyebrow">Documentation</p>
-        <h1>Bookmark URL Parameters</h1>
-        <p>
-          Pipe data into BMarks from browser extensions, Shortcuts, or automation tooling by sending query parameters to
-          <code>/</code>. The capture modal opens with everything pre-filled, even if you still need to sign in.
-        </p>
-      </header>
+        <header class="docs-hero">
+          <p class="docs-eyebrow">Documentation</p>
+          <h1>BMarks usage guide</h1>
+          <p>
+            Capture links, colors, notes, and now images, with live sync across every signed-in browser or device. Keep this
+            page handy for automations, drag-and-drop tips, and storage configuration.
+          </p>
+        </header>
 
-      <article class="docs-content">
-        <section>
-          <h2>Quick notes</h2>
-          <ul class="docs-bullets">
-            <li>Works with macOS share sheet, Raycast, Alfred, browser extensions, or curl.</li>
-            <li>Links, color values, and plain text are inferred instantly.</li>
-            <li>Unknown payloads become plain text so nothing gets dropped.</li>
-          </ul>
-        </section>
+        <article class="docs-content">
+          <section class="docs-section">
+            <h2>Quick start</h2>
+            <ul class="docs-bullets">
+              <li>Sign in with your Supabase project credentials and start adding groups; they appear instantly on other tabs.</li>
+              <li>Keyboard friendly: <code>⌘K</code>/<code>Ctrl+K</code> to focus search, arrows to move, <code>⏎</code> to copy or open.</li>
+              <li>No manual refresh—bookmarks and groups stream over Supabase Realtime across browsers and devices.</li>
+            </ul>
+          </section>
 
-        <section>
-          <h2>Parameters</h2>
-          <dl class="docs-params">
-            <div>
-              <dt><code>content</code> <span>required</span></dt>
-              <dd>URL, hex color (e.g. <code>#ff00ff</code>), rgb()/hsl() string, or plain text.</dd>
-            </div>
-            <div>
-              <dt><code>title</code></dt>
-              <dd>Optional custom label. Links auto-fetch the page title; colors use the literal code.</dd>
-            </div>
-            <div>
-              <dt><code>group</code></dt>
-              <dd>Optional group name or UUID. Missing groups are ignored so you can pick one manually.</dd>
-            </div>
-            <div>
-              <dt><code>new</code></dt>
-              <dd>When present (e.g. <code>new=1</code>), the modal opens even if no other fields are sent.</dd>
-            </div>
-          </dl>
-        </section>
+          <section class="docs-section">
+            <h2>Capture options</h2>
+            <ul class="docs-bullets">
+              <li><strong>Drag anything.</strong> Drop text or a URL anywhere on the app to open the modal with the content pre-filled.</li>
+              <li><strong>Image attachments.</strong> Use the Media field or drop an image to upload it to Supabase Storage, auto-generate an average-color icon, and store an optional note.</li>
+              <li><strong>Clipboard + share targets.</strong> Use the Paste button, the PWA share target, or scripted calls to the root URL with query parameters.</li>
+              <li><strong>Color + link detection.</strong> Hex values, rgb()/hsl(), and bare domains are auto-classified without extra input.</li>
+            </ul>
+          </section>
 
-        <section>
-          <h2>Examples</h2>
-          <pre>/?content=https://example.com/docs&title=Docs&group=Design
+          <section class="docs-section">
+            <h2>URL parameters</h2>
+            <p>Send a GET request to <code>/</code> with any of the following:</p>
+            <dl class="docs-params">
+              <div>
+                <dt><code>content</code> <span>required</span></dt>
+                <dd>Any link, hex/rgb color, or text snippet. Detection runs automatically.</dd>
+              </div>
+              <div>
+                <dt><code>title</code></dt>
+                <dd>Optional override. Links fetch their own title; text requires one.</dd>
+              </div>
+              <div>
+                <dt><code>group</code></dt>
+                <dd>Group UUID or case-insensitive name. Ignored when it does not exist.</dd>
+              </div>
+              <div>
+                <dt><code>url</code> / <code>text</code></dt>
+                <dd>Share target compatible; falls back to <code>content</code> if both are present.</dd>
+              </div>
+              <div>
+                <dt><code>new</code></dt>
+                <dd>Use <code>new=1</code> to force the modal to open even without payload.</dd>
+              </div>
+            </dl>
+            <pre>/?content=https://example.com/docs&title=Docs&group=Design
 /?content=%23ffcc00&group=Palette
-/?new=1</pre>
-        </section>
+/?text=Remember+this&new=1</pre>
+          </section>
 
-        <section>
-          <h2>Behavior</h2>
-          <ul class="docs-bullets">
-            <li>Parameters are consumed once and scrubbed from the URL.</li>
-            <li>Not signed in? Payloads are cached for 10 minutes and replayed post-auth.</li>
-            <li>Invalid URLs or color strings fall back to plain text and will need a manual title.</li>
-          </ul>
-        </section>
-      </article>
+          <section class="docs-section">
+            <h2>Image storage setup (Supabase)</h2>
+            <p>
+              Image attachments live in a Storage bucket named <code>bookmark-images</code>. Create it once in your Supabase
+              dashboard:
+            </p>
+            <ol class="docs-steps">
+              <li>Open <strong>Storage → Buckets</strong>, create <code>bookmark-images</code>, and set it to <em>Public</em> (or supply a signed URL proxy).</li>
+              <li>
+                In <strong>Policies</strong>, allow authenticated inserts and selects—for example:
+                <pre>create policy "allow authenticated uploads"
+on storage.objects for insert
+with check (bucket_id = 'bookmark-images' and auth.role() = 'authenticated');</pre>
+              </li>
+              <li>Repeat for <code>select</code>/<code>update</code> if you want users to replace attachments.</li>
+              <li>No code changes are required after the bucket exists; uploads happen from the Media field during bookmark save.</li>
+            </ol>
+            <p>
+              Each bookmark stores the public URL plus the average color, dimensions, and optional note inside <code>metadata</code> and <code>text_note</code>.
+            </p>
+          </section>
+
+          <section class="docs-section">
+            <h2>Realtime sync</h2>
+            <ul class="docs-bullets">
+              <li>Supabase Realtime channels push bookmark and group updates instantly—no 30-second polling loop.</li>
+              <li>Offline tabs replay pending changes as soon as they regain focus or connectivity.</li>
+              <li>Local BroadcastChannel keeps multiple tabs on the same device aligned without hitting the network.</li>
+            </ul>
+          </section>
+        </article>
     </main>
       <script type="module" src="/js/pwa.js"></script>
     </body>

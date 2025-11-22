@@ -66,8 +66,8 @@ const REALTIME_RETRY_DELAY = 4000;
 let pendingDataResync = null;
 let lastDataResyncAt = 0;
 const DATA_RESYNC_COOLDOWN = 1500;
-let passiveResyncTimer = null;
-const PASSIVE_RESYNC_INTERVAL = 30000;
+const BOOKMARK_IMAGE_BUCKET = "bookmark-images";
+let globalDragDepth = 0;
 
 const state = {
   session: null,
@@ -82,12 +82,21 @@ const state = {
   groupDeleteMode: false,
   pendingGroupDeleteId: null,
   pendingGroupEditId: null,
+  isGroupEditSaving: false,
   isLoadingBookmarks: false,
   bookmarkLoadError: null,
   isSavingBookmark: false,
   pendingBookmarkDeleteId: null,
   focusedBookmarkIndex: -1,
   groupColors: loadStoredGroupColors(),
+  bookmarkGroupSearch: "",
+  isBookmarkGroupMenuOpen: false,
+  pendingImageAttachment: null,
+  pendingImagePreviewUrl: null,
+  pendingImageAverageColor: null,
+  pendingImageDimensions: null,
+  editingBookmarkType: null,
+  editingImageReference: null,
 };
 
 const ui = {
@@ -117,6 +126,20 @@ const ui = {
   ),
   activeGroupLabel: document.getElementById("activeGroupLabel"),
   groupSelect: document.getElementById("bookmarkGroup"),
+  bookmarkGroupControl: document.getElementById("bookmarkGroupControl"),
+  bookmarkGroupMenu: document.getElementById("bookmarkGroupMenu"),
+  bookmarkGroupTrigger: document.getElementById("bookmarkGroupTrigger"),
+  bookmarkGroupTriggerLabel: document.getElementById("bookmarkGroupTriggerLabel"),
+  bookmarkGroupSearch: document.getElementById("bookmarkGroupSearch"),
+  bookmarkGroupList: document.getElementById("bookmarkGroupList"),
+  bookmarkAttachmentZone: document.getElementById("bookmarkAttachmentZone"),
+  bookmarkAttachmentInput: document.getElementById("bookmarkAttachmentInput"),
+  bookmarkAttachmentButton: document.getElementById("bookmarkAttachmentButton"),
+  bookmarkAttachmentPreview: document.getElementById("bookmarkAttachmentPreview"),
+  bookmarkAttachmentPreviewImage: document.getElementById("bookmarkAttachmentPreviewImage"),
+  bookmarkAttachmentFileName: document.getElementById("bookmarkAttachmentFileName"),
+  bookmarkAttachmentColor: document.getElementById("bookmarkAttachmentColor"),
+  bookmarkAttachmentRemove: document.getElementById("bookmarkAttachmentRemove"),
   openBookmarkModal: document.getElementById("openBookmarkModal"),
   bookmarkModal: document.getElementById("bookmarkModal"),
   groupEditModal: document.getElementById("editGroupModal"),
@@ -200,7 +223,6 @@ async function ensureSession() {
   cacheSession(session);
   clearAuthHash();
   attachAuthGuards();
-  startPassiveResync();
   return session;
 }
 
@@ -234,7 +256,6 @@ function attachAuthGuards() {
       broadcastAuthState(false);
       clearCachedSession();
       unsubscribeFromRealtime();
-      stopPassiveResync();
       redirectToLanding();
       return;
     }
@@ -252,7 +273,6 @@ function attachAuthGuards() {
       broadcastAuthState(true);
       showAppView();
       subscribeToRealtime();
-      startPassiveResync();
     }
   });
 
@@ -303,10 +323,7 @@ async function refreshSession(options = {}) {
       state.session = null;
       clearCachedSession();
       unsubscribeFromRealtime();
-      stopPassiveResync();
       redirectToLanding();
-    } else {
-      stopPassiveResync();
     }
     return null;
   }
@@ -323,7 +340,6 @@ async function refreshSession(options = {}) {
 
   cacheSession(session);
   showAppView();
-  startPassiveResync();
   return session;
 }
 
@@ -382,6 +398,12 @@ function bindGlobalEvents() {
     ) {
       toggleUserMenu(false);
     }
+    if (
+      ui.bookmarkGroupControl &&
+      !ui.bookmarkGroupControl.contains(event.target)
+    ) {
+      toggleBookmarkGroupMenu(false);
+    }
     document
       .querySelectorAll(".modal[aria-hidden='false']")
       .forEach((modal) => {
@@ -391,10 +413,66 @@ function bindGlobalEvents() {
       });
   });
 
-  ui.groupPickerButton?.addEventListener("click", () => {
-    const isOpen = ui.groupPicker.getAttribute("data-open") === "true";
-    toggleGroupDropdown(!isOpen);
-  });
+    ui.groupPickerButton?.addEventListener("click", () => {
+      const isOpen = ui.groupPicker.getAttribute("data-open") === "true";
+      toggleGroupDropdown(!isOpen);
+    });
+    ui.bookmarkGroupTrigger?.addEventListener("click", () => {
+      const isOpen =
+        ui.bookmarkGroupControl?.getAttribute("data-open") === "true";
+      toggleBookmarkGroupMenu(!isOpen);
+    });
+    ui.bookmarkGroupSearch?.addEventListener("input", (event) => {
+      state.bookmarkGroupSearch = event.target.value || "";
+      renderBookmarkGroupOptions();
+    });
+    ui.bookmarkGroupSearch?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const firstOption =
+          ui.bookmarkGroupList?.querySelector(".combo-option");
+        firstOption?.click();
+      }
+    });
+    ui.bookmarkAttachmentButton?.addEventListener("click", () => {
+      ui.bookmarkAttachmentInput?.click();
+    });
+    ui.bookmarkAttachmentInput?.addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        prepareImageAttachment(file);
+        event.target.value = "";
+      }
+    });
+    ui.bookmarkAttachmentRemove?.addEventListener("click", () => {
+      clearPendingImageAttachment();
+    });
+    ui.bookmarkAttachmentZone?.addEventListener("dragover", (event) => {
+      if (!event.dataTransfer?.types?.includes("Files")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      ui.bookmarkAttachmentZone?.classList.add("is-dragging");
+    });
+    ui.bookmarkAttachmentZone?.addEventListener("dragleave", (event) => {
+      event.stopPropagation();
+      ui.bookmarkAttachmentZone?.classList.remove("is-dragging");
+    });
+    ui.bookmarkAttachmentZone?.addEventListener("drop", (event) => {
+      if (!event.dataTransfer?.files?.length) return;
+      event.preventDefault();
+      event.stopPropagation();
+      ui.bookmarkAttachmentZone?.classList.remove("is-dragging");
+      const file = [...event.dataTransfer.files].find((entry) =>
+        entry.type.startsWith("image/")
+      );
+      if (file) {
+        prepareImageAttachment(file);
+      }
+    });
+    document.addEventListener("dragenter", handleGlobalDragEnter);
+    document.addEventListener("dragleave", handleGlobalDragLeave);
+    document.addEventListener("dragover", handleGlobalDragOver);
+    document.addEventListener("drop", handleGlobalDrop);
 
   ui.openGroupCreator?.addEventListener("click", () => {
     state.groupDeleteMode = false;
@@ -568,20 +646,24 @@ function bindGlobalEvents() {
     }
   });
 
-  document.addEventListener("keyup", (event) => {
-    if (event.key === "Escape") {
-      const openModalEl = document.querySelector(".modal[aria-hidden='false']");
-      if (openModalEl) {
-        closeModal(openModalEl.id);
-      } else if (ui.searchInput && document.activeElement === ui.searchInput) {
-        ui.searchInput.blur();
-      } else if (state.filters.search) {
-        state.filters.search = "";
-        if (ui.searchInput) ui.searchInput.value = "";
-        renderBookmarks();
+    document.addEventListener("keyup", (event) => {
+      if (event.key === "Escape") {
+        if (ui.bookmarkGroupControl?.getAttribute("data-open") === "true") {
+          toggleBookmarkGroupMenu(false);
+          return;
+        }
+        const openModalEl = document.querySelector(".modal[aria-hidden='false']");
+        if (openModalEl) {
+          closeModal(openModalEl.id);
+        } else if (ui.searchInput && document.activeElement === ui.searchInput) {
+          ui.searchInput.blur();
+        } else if (state.filters.search) {
+          state.filters.search = "";
+          if (ui.searchInput) ui.searchInput.value = "";
+          renderBookmarks();
+        }
       }
-    }
-  });
+    });
 
   document.addEventListener("keydown", (event) => {
     const hasOpenModal = document.querySelector(".modal[aria-hidden='false']");
@@ -677,6 +759,27 @@ function toggleGroupDropdown(force) {
   }
 }
 
+function toggleBookmarkGroupMenu(force) {
+  if (!ui.bookmarkGroupControl || !ui.bookmarkGroupTrigger) return;
+  const nextState =
+    typeof force === "boolean"
+      ? force
+      : ui.bookmarkGroupControl.getAttribute("data-open") !== "true";
+  ui.bookmarkGroupControl.setAttribute("data-open", String(nextState));
+  ui.bookmarkGroupTrigger.setAttribute("aria-expanded", String(nextState));
+  state.isBookmarkGroupMenuOpen = nextState;
+  if (nextState) {
+    state.bookmarkGroupSearch = "";
+    if (ui.bookmarkGroupSearch) {
+      ui.bookmarkGroupSearch.value = "";
+      setTimeout(() => ui.bookmarkGroupSearch?.focus(), 0);
+    }
+    renderBookmarkGroupOptions();
+  } else if (ui.bookmarkGroupSearch) {
+    ui.bookmarkGroupSearch.blur();
+  }
+}
+
 function toggleUserMenu(force) {
   if (!ui.userMenu) return;
   ui.userMenu.setAttribute("data-open", String(force));
@@ -702,9 +805,8 @@ async function fetchGroups() {
   renderBookmarks();
 }
 
-function renderGroups() {
-  if (!ui.groupOptions) return;
-  const counts = state.bookmarks.reduce(
+function computeGroupCounts() {
+  return state.bookmarks.reduce(
     (acc, bookmark) => {
       const key = bookmark.group_id || "__none";
       acc[key] = (acc[key] || 0) + 1;
@@ -713,6 +815,11 @@ function renderGroups() {
     },
     { all: 0 }
   );
+}
+
+function renderGroups() {
+  if (!ui.groupOptions) return;
+  const counts = computeGroupCounts();
   const options = [
     {
       id: null,
@@ -780,12 +887,15 @@ function renderGroups() {
     );
 
   if (ui.groupSelect) {
+    const previousValue = ui.groupSelect.value || "";
     ui.groupSelect.innerHTML = `<option value="">No group</option>${state.groups
       .map(
         (group) =>
           `<option value="${group.id}">${escapeHtml(group.name)}</option>`
       )
       .join("")}`;
+    ui.groupSelect.value = previousValue;
+    updateBookmarkGroupTriggerLabel();
   }
 
   if (ui.openGroupDeleter) {
@@ -795,6 +905,100 @@ function renderGroups() {
   }
 
   refreshGroupEditorControls();
+  renderBookmarkGroupOptions(counts);
+}
+
+function renderBookmarkGroupOptions(counts) {
+  if (!ui.bookmarkGroupList) return;
+  const stats = counts || computeGroupCounts();
+  const rawSearch = (state.bookmarkGroupSearch || "").trim();
+  const normalizedSearch = rawSearch.toLowerCase();
+  const selectedId = ui.groupSelect?.value || "";
+  const dataset = normalizedSearch
+    ? state.groups.filter((group) =>
+        (group.name || "").toLowerCase().includes(normalizedSearch)
+      )
+    : state.groups;
+  const noGroupMarkup = createBookmarkGroupOption({
+    id: null,
+    name: "No group",
+    count: stats.__none || 0,
+    isActive: !selectedId,
+  });
+  const groupMarkup = dataset
+    .map((group) =>
+      createBookmarkGroupOption({
+        id: group.id,
+        name: group.name || "Untitled group",
+        color: getGroupColor(group.id, group.name || ""),
+        count: stats[group.id] || 0,
+        isActive: selectedId === group.id,
+      })
+    )
+    .join("");
+  let message = "";
+  if (normalizedSearch && !dataset.length) {
+    message = `<p class="combo-empty">No groups match “${escapeHtml(
+      rawSearch
+    )}”.</p>`;
+  } else if (!state.groups.length) {
+    message =
+      '<p class="combo-empty">No groups yet — create one from the picker.</p>';
+  }
+  ui.bookmarkGroupList.innerHTML = `${noGroupMarkup}${groupMarkup}${message}`;
+  ui.bookmarkGroupList
+    .querySelectorAll("[data-group-option]")
+    .forEach((button) =>
+      button.addEventListener("click", () => {
+        const targetId = button.dataset.groupId || null;
+        setBookmarkFormGroup(targetId);
+        toggleBookmarkGroupMenu(false);
+      })
+    );
+}
+
+function createBookmarkGroupOption({
+  id = null,
+  name = "No group",
+  color = null,
+  count = 0,
+  isActive = false,
+}) {
+  const dataId = id || "";
+  const chipColor = color && id ? color : "var(--border-subtle)";
+  return `
+    <button
+      type="button"
+      class="combo-option ${isActive ? "is-active" : ""}"
+      data-group-option="true"
+      data-group-id="${dataId}"
+    >
+      <span class="combo-option-main">
+        <span class="combo-color" style="--chip-color:${chipColor}"></span>
+        <span class="combo-option-label">${escapeHtml(name)}</span>
+      </span>
+      <span class="combo-option-meta">${count}</span>
+    </button>
+  `;
+}
+
+function updateBookmarkGroupTriggerLabel() {
+  if (!ui.bookmarkGroupTriggerLabel) return;
+  const selectedId = ui.groupSelect?.value || "";
+  if (!selectedId) {
+    ui.bookmarkGroupTriggerLabel.textContent = "No group";
+    return;
+  }
+  const group = state.groups.find((entry) => entry.id === selectedId);
+  ui.bookmarkGroupTriggerLabel.textContent = group?.name || "No group";
+}
+
+function setBookmarkFormGroup(groupId) {
+  if (!ui.groupSelect) return;
+  const nextValue = groupId || "";
+  ui.groupSelect.value = nextValue;
+  updateBookmarkGroupTriggerLabel();
+  renderBookmarkGroupOptions();
 }
 
 function refreshGroupEditorControls() {
@@ -918,7 +1122,7 @@ function hydrateGroupEditorFields(groupId) {
 
 async function handleGroupEditSubmit(event) {
   event.preventDefault();
-  if (!state.session || !ui.groupEditSelect) return;
+  if (!state.session || !ui.groupEditSelect || state.isGroupEditSaving) return;
   const groupId = ui.groupEditSelect.value;
   if (!groupId) return;
   const group = state.groups.find((entry) => entry.id === groupId);
@@ -929,32 +1133,52 @@ async function handleGroupEditSubmit(event) {
   if (nextName && nextName !== group.name) {
     updates.name = nextName;
   }
-  if (Object.keys(updates).length) {
-    const { error } = await supabase
-      .from("groups")
-      .update(updates)
-      .eq("id", groupId)
-      .eq("user_id", state.session.user.id);
-    if (error) {
-      console.error("Failed to update group", error);
-      return;
+  const hasNameChange = Object.keys(updates).length > 0;
+  if (!hasNameChange && !nextColor) {
+    showCopyToast("No changes to update");
+    return;
+  }
+  const submitButton = ui.groupEditForm?.querySelector("[type='submit']");
+  state.isGroupEditSaving = true;
+  submitButton?.setAttribute("disabled", "disabled");
+  let colorChanged = false;
+  try {
+    if (hasNameChange) {
+      const { error } = await supabase
+        .from("groups")
+        .update(updates)
+        .eq("id", groupId)
+        .eq("user_id", state.session.user.id);
+      if (error) {
+        throw error;
+      }
     }
-    state.groups = state.groups.map((entry) =>
-      entry.id === groupId ? { ...entry, ...updates } : entry
-    );
+    if (nextColor) {
+      colorChanged = Boolean(setGroupColor(groupId, nextColor));
+    }
+    state.pendingGroupEditId = null;
+    if (state.filters.groupId === groupId && ui.activeGroupLabel) {
+      ui.activeGroupLabel.textContent = nextName || group.name || "All bookmarks";
+    }
+    if (hasNameChange) {
+      await fetchGroups();
+    } else if (!colorChanged) {
+      renderGroups();
+      renderBookmarks();
+    }
+    syncBookmarkGroupNames();
+    if (hasNameChange || colorChanged) {
+      notifyDataChange("groups:changed");
+    }
+    showCopyToast("Group updated");
+    closeModal("editGroupModal");
+  } catch (error) {
+    console.error("Failed to update group", error);
+    showCopyToast("Unable to update group");
+  } finally {
+    state.isGroupEditSaving = false;
+    submitButton?.removeAttribute("disabled");
   }
-  if (nextColor) {
-    setGroupColor(groupId, nextColor);
-  }
-  state.pendingGroupEditId = null;
-  if (state.filters.groupId === groupId && ui.activeGroupLabel) {
-    ui.activeGroupLabel.textContent = nextName || group.name || "All bookmarks";
-  }
-  syncBookmarkGroupNames();
-  renderGroups();
-  renderBookmarks();
-  notifyDataChange("groups:changed");
-  closeModal("editGroupModal");
 }
 
 function handleRandomizeGroupColorClick(event) {
@@ -1035,6 +1259,7 @@ async function fetchBookmarks() {
 
   state.bookmarks = (data || []).map(normalizeBookmark);
   renderBookmarks();
+  renderGroups();
 }
 
 function normalizeBookmark(raw) {
@@ -1108,8 +1333,16 @@ function renderBookmarks() {
 
 function renderBookmarkRow(bookmark, visibleIndex) {
   const iconMarkup = createIconMarkup(bookmark);
-  const url = bookmark.url || (bookmark.type === "link" ? bookmark.content : "");
-  const domain = url ? safeHostname(url) : "";
+  const isImage = bookmark.type === "image";
+  const imageUrl = isImage
+    ? bookmark.metadata?.image_url || bookmark.content || ""
+    : null;
+  const url =
+    isImage || bookmark.type === "link"
+      ? imageUrl || bookmark.url || bookmark.content || ""
+      : "";
+  const linkHref = url || "#";
+  const domain = !isImage && url ? safeHostname(url) : "";
   const domainChip = domain
     ? `<span class="bookmark-domain">${domain}</span>`
     : "";
@@ -1118,14 +1351,18 @@ function renderBookmarkRow(bookmark, visibleIndex) {
         bookmark.groupColor || "#a1a1aa"
       }">${escapeHtml(bookmark.groupName)}</span>`
     : "";
-  const metaPieces = [domainChip, groupChip].filter(Boolean);
+  const imageChip = isImage
+    ? `<span class="bookmark-domain">Image</span>`
+    : "";
+  const metaPieces = [domainChip, groupChip, imageChip].filter(Boolean);
   const metaInline = metaPieces.length
     ? `<span class="bookmark-meta-inline">${metaPieces.join("")}</span>`
     : "";
   const titleMarkup =
-    bookmark.type === "link"
-      ? `<a class="bookmark-title" href="${url}" target="_blank" rel="noreferrer">${escapeHtml(
-          bookmark.title || domain || "Untitled link"
+    bookmark.type === "link" || isImage
+      ? `<a class="bookmark-title" href="${linkHref}" target="_blank" rel="noreferrer">${escapeHtml(
+          bookmark.title ||
+            (isImage ? "Image bookmark" : domain || "Untitled link")
         )}</a>`
       : `<p class="bookmark-title">${escapeHtml(
           bookmark.title || "Saved note"
@@ -1479,6 +1716,8 @@ function showLoadingView() {
 
 function enterBookmarkCreateMode() {
   state.editingBookmarkId = null;
+  state.editingBookmarkType = null;
+  state.editingImageReference = null;
   ui.saveBookmarkButton && (ui.saveBookmarkButton.textContent = "Save Bookmark");
   ui.deleteBookmarkButton?.classList.add("is-hidden");
   ui.bookmarkTitle?.setCustomValidity("");
@@ -1487,6 +1726,10 @@ function enterBookmarkCreateMode() {
 function resetBookmarkForm(options = {}) {
   const { focusContent = false } = options;
   ui.bookmarkForm?.reset();
+  setBookmarkFormGroup(null);
+  state.editingBookmarkType = null;
+  state.editingImageReference = null;
+  clearPendingImageAttachment();
   enterBookmarkCreateMode();
   updatePreview();
   if (focusContent) {
@@ -1496,9 +1739,20 @@ function resetBookmarkForm(options = {}) {
 
 function startEditingBookmark(bookmark) {
   state.editingBookmarkId = bookmark.id;
-  if (ui.bookmarkContent) ui.bookmarkContent.value = bookmark.content;
+  state.editingBookmarkType = bookmark.type || null;
+  clearPendingImageAttachment();
+  if (bookmark.type === "image") {
+    hydrateImagePreviewFromBookmark(bookmark);
+  }
+  if (ui.bookmarkContent) {
+    if (bookmark.type === "image") {
+      ui.bookmarkContent.value = bookmark.text_note || "";
+    } else {
+      ui.bookmarkContent.value = bookmark.content;
+    }
+  }
   if (ui.bookmarkTitle) ui.bookmarkTitle.value = bookmark.title || "";
-  if (ui.groupSelect) ui.groupSelect.value = bookmark.group_id || "";
+  setBookmarkFormGroup(bookmark.group_id || null);
   ui.saveBookmarkButton && (ui.saveBookmarkButton.textContent = "Update Bookmark");
   ui.deleteBookmarkButton?.classList.remove("is-hidden");
   updatePreview();
@@ -1617,6 +1871,23 @@ function createIconMarkup(bookmark) {
       </div>
     `;
   }
+  if (bookmark.type === "image") {
+    const imageUrl = bookmark.metadata?.image_url || bookmark.content || "";
+    const averageColor =
+      bookmark.metadata?.image_avg_color || "rgba(255,255,255,0.08)";
+    const title = bookmark.title || "Image bookmark";
+    return `
+      <div class="bookmark-icon bookmark-icon--image" style="background:${averageColor};">
+        ${
+          imageUrl
+            ? `<img src="${imageUrl}" alt="${escapeHtml(
+                title
+              )}" loading="lazy" decoding="async" />`
+            : `<span class="bookmark-icon-fallback" aria-hidden="true">IMG</span>`
+        }
+      </div>
+    `;
+  }
   const gradient = bookmark.metadata?.gradient || gradientFromString(bookmark.id);
   return `<div class="bookmark-icon" style="background:${gradient};"></div>`;
 }
@@ -1626,15 +1897,23 @@ async function handleBookmarkSubmit(event) {
   if (!state.session) return;
   if (state.isSavingBookmark) return;
 
-  const content = ui.bookmarkContent.value.trim();
-  if (!content) return;
+  const rawContent = ui.bookmarkContent.value.trim();
+  const hasPendingImage = Boolean(state.pendingImageAttachment);
+  const hasExistingImage =
+    Boolean(state.editingImageReference) && !state.pendingImageAttachment;
+  const shouldTreatAsImage = hasPendingImage || hasExistingImage;
 
-  const detected = detectContent(content);
+  if (!rawContent && !shouldTreatAsImage) return;
+
+  const detected = shouldTreatAsImage ? { type: "image" } : detectContent(rawContent);
   let title = ui.bookmarkTitle.value.trim();
   let bookmarkMutationOccurred = false;
 
   if (!title) {
-    title = await resolveTitle(detected);
+    title =
+      detected.type === "image"
+        ? deriveImageTitle()
+        : await resolveTitle(detected);
   }
 
   if (!title) {
@@ -1654,19 +1933,72 @@ async function handleBookmarkSubmit(event) {
   let saveSucceeded = false;
 
   try {
+    let imageMetadata = null;
+    const noteForImage = detected.type === "image" ? rawContent || null : null;
+    if (detected.type === "image") {
+      try {
+        let uploadResult = null;
+        if (hasPendingImage) {
+          uploadResult = await uploadBookmarkImage(state.pendingImageAttachment);
+        } else if (hasExistingImage) {
+          uploadResult = {
+            publicUrl: state.editingImageReference?.url || null,
+            path: state.editingImageReference?.path || null,
+          };
+        }
+        if (!uploadResult?.publicUrl) {
+          showCopyToast("Image upload failed. Check Storage settings.");
+          return;
+        }
+        imageMetadata = {
+          image_url: uploadResult.publicUrl,
+          image_path: uploadResult.path || null,
+          image_avg_color:
+            state.pendingImageAverageColor ||
+            state.editingImageReference?.averageColor ||
+            null,
+          image_width:
+            state.pendingImageDimensions?.width ||
+            state.editingImageReference?.width ||
+            null,
+          image_height:
+            state.pendingImageDimensions?.height ||
+            state.editingImageReference?.height ||
+            null,
+        };
+      } catch (error) {
+        console.error("Failed to upload image", error);
+        showCopyToast("Image upload failed. Check Storage settings.");
+        return;
+      }
+    }
+
+    const metadata = {};
+    if (detected.type === "link") {
+      metadata.domain = detected.hostname || null;
+    }
+    if (detected.type === "text") {
+      metadata.gradient = gradientFromString(rawContent);
+    }
+    if (imageMetadata) {
+      Object.assign(metadata, imageMetadata);
+    }
+
     const basePayload = {
-      content,
+      content:
+        detected.type === "image" ? imageMetadata?.image_url || "" : rawContent,
       title,
       type: detected.type,
       url: detected.type === "link" ? detected.url : null,
       color_code: detected.type === "color" ? detected.color : null,
-      text_note: detected.type === "text" ? content : null,
+      text_note:
+        detected.type === "text"
+          ? rawContent
+          : detected.type === "image"
+          ? noteForImage
+          : null,
       group_id: ui.groupSelect.value || null,
-      metadata: {
-        domain: detected.hostname || null,
-        gradient:
-          detected.type === "text" ? gradientFromString(content) : undefined,
-      },
+      metadata,
     };
 
     let record;
@@ -1730,6 +2062,295 @@ async function handleBookmarkDelete() {
   );
   if (!bookmark) return;
   promptDeleteBookmark(bookmark);
+}
+
+function deriveImageTitle() {
+  if (state.pendingImageAttachment?.name) {
+    const base = state.pendingImageAttachment.name.replace(/\.[^/.]+$/, "");
+    return base || "Image bookmark";
+  }
+  if (state.editingImageReference?.url) {
+    try {
+      const url = new URL(state.editingImageReference.url);
+      const candidate = url.pathname.split("/").filter(Boolean).pop() || "";
+      const cleaned = candidate.replace(/\.[^/.]+$/, "");
+      return cleaned || "Image bookmark";
+    } catch (_error) {
+      return "Image bookmark";
+    }
+  }
+  return "Image bookmark";
+}
+
+async function prepareImageAttachment(file) {
+  if (!file || !file.type?.startsWith("image/")) {
+    showCopyToast("Only image files are supported");
+    return;
+  }
+  try {
+    const analysis = await analyzeImageFile(file);
+    state.pendingImageAttachment = file;
+    state.pendingImagePreviewUrl = analysis.dataUrl;
+    state.pendingImageAverageColor = analysis.averageColor;
+    state.pendingImageDimensions = {
+      width: analysis.width,
+      height: analysis.height,
+    };
+    state.editingImageReference = null;
+    renderAttachmentPreview({
+      url: analysis.dataUrl,
+      averageColor: analysis.averageColor,
+      name: file.name,
+      width: analysis.width,
+      height: analysis.height,
+    });
+    updatePreview();
+    if (ui.bookmarkModal?.getAttribute("aria-hidden") === "true") {
+      openModal("bookmarkModal");
+    }
+  } catch (error) {
+    console.error("Unable to process image", error);
+    showCopyToast("Unable to process image");
+  }
+}
+
+function hydrateImagePreviewFromBookmark(bookmark) {
+  const imageUrl =
+    bookmark.metadata?.image_url || bookmark.content || "";
+  state.editingImageReference = {
+    url: imageUrl,
+    path: bookmark.metadata?.image_path || null,
+    averageColor: bookmark.metadata?.image_avg_color || null,
+    width: bookmark.metadata?.image_width || null,
+    height: bookmark.metadata?.image_height || null,
+  };
+  state.pendingImageAttachment = null;
+  state.pendingImagePreviewUrl = imageUrl;
+  state.pendingImageAverageColor = state.editingImageReference.averageColor;
+  state.pendingImageDimensions = {
+    width: state.editingImageReference.width,
+    height: state.editingImageReference.height,
+  };
+  renderAttachmentPreview({
+    url: imageUrl,
+    averageColor: state.editingImageReference.averageColor,
+    name: bookmark.title || "Image bookmark",
+    width: state.editingImageReference.width,
+    height: state.editingImageReference.height,
+  });
+  updatePreview();
+}
+
+function renderAttachmentPreview(details = {}) {
+  if (!ui.bookmarkAttachmentZone) return;
+  ui.bookmarkAttachmentZone.dataset.hasFile = "true";
+  ui.bookmarkAttachmentZone.classList.remove("is-dragging");
+  ui.bookmarkAttachmentPreview?.removeAttribute("hidden");
+  if (ui.bookmarkAttachmentPreviewImage && details.url) {
+    ui.bookmarkAttachmentPreviewImage.src = details.url;
+  }
+  if (ui.bookmarkAttachmentFileName) {
+    ui.bookmarkAttachmentFileName.textContent =
+      details.name || "Image attachment";
+  }
+  if (ui.bookmarkAttachmentColor) {
+    const sizeLabel =
+      details.width && details.height
+        ? `${Math.round(details.width)}×${Math.round(details.height)}px`
+        : "";
+    const colorLabel = details.averageColor
+      ? `Avg ${details.averageColor}`
+      : "";
+    ui.bookmarkAttachmentColor.textContent = [sizeLabel, colorLabel]
+      .filter(Boolean)
+      .join(" • ");
+  }
+}
+
+function clearPendingImageAttachment() {
+  state.pendingImageAttachment = null;
+  state.pendingImagePreviewUrl = null;
+  state.pendingImageAverageColor = null;
+  state.pendingImageDimensions = null;
+  state.editingImageReference = null;
+  ui.bookmarkAttachmentZone?.classList.remove("is-dragging");
+  if (ui.bookmarkAttachmentZone) {
+    ui.bookmarkAttachmentZone.dataset.hasFile = "false";
+  }
+  if (ui.bookmarkAttachmentPreview) {
+    ui.bookmarkAttachmentPreview.setAttribute("hidden", "hidden");
+  }
+  if (ui.bookmarkAttachmentPreviewImage) {
+    ui.bookmarkAttachmentPreviewImage.src = "";
+  }
+  if (ui.bookmarkAttachmentFileName) {
+    ui.bookmarkAttachmentFileName.textContent = "";
+  }
+  if (ui.bookmarkAttachmentColor) {
+    ui.bookmarkAttachmentColor.textContent = "";
+  }
+  if (ui.bookmarkAttachmentInput) {
+    ui.bookmarkAttachmentInput.value = "";
+  }
+}
+
+async function analyzeImageFile(file) {
+  const dataUrl = await readFileAsDataUrl(file);
+  const analysis = await extractAverageColorFromDataUrl(dataUrl);
+  return {
+    dataUrl,
+    averageColor: analysis.averageColor,
+    width: analysis.width,
+    height: analysis.height,
+  };
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function extractAverageColorFromDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const sampleSize = 10;
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        canvas.width = sampleSize;
+        canvas.height = sampleSize;
+        context.drawImage(img, 0, 0, sampleSize, sampleSize);
+        const { data } = context.getImageData(0, 0, sampleSize, sampleSize);
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        for (let index = 0; index < data.length; index += 4) {
+          r += data[index];
+          g += data[index + 1];
+          b += data[index + 2];
+        }
+        const totalPixels = data.length / 4;
+        const averageColor = `#${toHex(r / totalPixels)}${toHex(
+          g / totalPixels
+        )}${toHex(b / totalPixels)}`;
+        resolve({
+          averageColor,
+          width: img.naturalWidth || img.width || 0,
+          height: img.naturalHeight || img.height || 0,
+        });
+      } catch (error) {
+        reject(error);
+      }
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+async function uploadBookmarkImage(file) {
+  if (!state.session) {
+    throw new Error("Missing session");
+  }
+  const fileExt =
+    (file.name?.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") ||
+    "png";
+  const fileName = `${Date.now()}-${Math.random()
+    .toString(16)
+    .slice(2)}.${fileExt}`;
+  const storagePath = `${state.session.user.id}/${fileName}`;
+  const { error } = await supabase.storage
+    .from(BOOKMARK_IMAGE_BUCKET)
+    .upload(storagePath, file, {
+      contentType: file.type || "image/png",
+      cacheControl: "3600",
+      upsert: false,
+    });
+  if (error) {
+    throw error;
+  }
+  const { data } = supabase.storage
+    .from(BOOKMARK_IMAGE_BUCKET)
+    .getPublicUrl(storagePath);
+  if (!data?.publicUrl) {
+    throw new Error("Unable to resolve public URL for uploaded image");
+  }
+  return {
+    publicUrl: data.publicUrl,
+    path: storagePath,
+  };
+}
+
+function openBookmarkModalWithContent(value) {
+  if (!state.session || !value) return;
+  resetBookmarkForm({ focusContent: false });
+  if (ui.bookmarkContent) {
+    ui.bookmarkContent.value = value.trim();
+  }
+  updatePreview();
+  openModal("bookmarkModal");
+  ui.bookmarkContent?.focus();
+}
+
+function hasSupportedDropData(event) {
+  const types = Array.from(event.dataTransfer?.types || []);
+  return (
+    types.includes("Files") ||
+    types.includes("text/plain") ||
+    types.includes("text/uri-list")
+  );
+}
+
+function handleGlobalDragEnter(event) {
+  if (!state.session || !hasSupportedDropData(event)) return;
+  globalDragDepth += 1;
+  document.body.dataset.dropActive = "true";
+}
+
+function handleGlobalDragLeave(event) {
+  if (globalDragDepth === 0) return;
+  globalDragDepth = Math.max(0, globalDragDepth - 1);
+  if (globalDragDepth === 0) {
+    delete document.body.dataset.dropActive;
+  }
+}
+
+function handleGlobalDragOver(event) {
+  if (!state.session || !hasSupportedDropData(event)) return;
+  event.preventDefault();
+}
+
+function handleGlobalDrop(event) {
+  if (!state.session || !event.dataTransfer) return;
+  if (!hasSupportedDropData(event)) return;
+  const droppingIntoField = Boolean(
+    event.target?.closest(
+      "input, textarea, select, [contenteditable='true'], .attachment-zone"
+    )
+  );
+  globalDragDepth = 0;
+  delete document.body.dataset.dropActive;
+  if (droppingIntoField) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  const files = [...(event.dataTransfer.files || [])];
+  const imageFile = files.find((entry) => entry.type.startsWith("image/"));
+  if (imageFile) {
+    prepareImageAttachment(imageFile);
+    return;
+  }
+  const textData =
+    event.dataTransfer.getData("text/plain") ||
+    event.dataTransfer.getData("text/uri-list");
+  if (textData) {
+    openBookmarkModalWithContent(textData);
+  }
 }
 
 function detectContent(value) {
@@ -1826,7 +2447,10 @@ async function fetchPageTitle(url) {
 function updatePreview() {
   if (!ui.previewCard) return;
   const content = ui.bookmarkContent.value.trim();
-  const detected = detectContent(content);
+  const hasImageAttachment =
+    Boolean(state.pendingImageAttachment) ||
+    Boolean(state.editingImageReference);
+  const detected = hasImageAttachment ? { type: "image" } : detectContent(content);
   const manualTitle = ui.bookmarkTitle.value.trim();
   const title = manualTitle || autoPreviewTitle(detected);
   const titleNode = ui.previewCard.querySelector(".preview-title");
@@ -1837,6 +2461,22 @@ function updatePreview() {
     ui.bookmarkModal.dataset.previewType = detected.type;
   }
   titleNode.textContent = title;
+  if (detected.type === "image") {
+    const previewSrc =
+      state.pendingImagePreviewUrl || state.editingImageReference?.url || "";
+    const color =
+      state.pendingImageAverageColor ||
+      state.editingImageReference?.averageColor ||
+      "rgba(255,255,255,0.08)";
+    const label =
+      state.pendingImageAttachment?.name ||
+      state.editingImageReference?.url?.split("/").pop() ||
+      "Image attachment";
+    metaNode.textContent = label;
+    icon.style.background = color;
+    icon.innerHTML = previewSrc ? `<img src="${previewSrc}" alt="">` : "🖼️";
+    return;
+  }
   metaNode.textContent =
     detected.type === "link"
       ? detected.hostname || "Link"
@@ -1868,12 +2508,16 @@ function autoPreviewTitle(detected) {
   if (detected.type === "color") {
     return detected.color;
   }
+  if (detected.type === "image") {
+    return deriveImageTitle();
+  }
   return "Add a title";
 }
 
 function openModal(id) {
   const modal = document.getElementById(id);
   if (!modal) return;
+  toggleBookmarkGroupMenu(false);
   modal.setAttribute("aria-hidden", "false");
 }
 
@@ -2134,6 +2778,11 @@ function sanitizeColorValue(value) {
   return null;
 }
 
+function toHex(value) {
+  const clamped = Math.max(0, Math.min(255, Math.round(value)));
+  return clamped.toString(16).padStart(2, "0");
+}
+
 function randomGroupColor() {
   const index = Math.floor(Math.random() * GROUP_COLOR_PALETTE.length);
   return GROUP_COLOR_PALETTE[index];
@@ -2237,20 +2886,6 @@ function handleVisibilityResync() {
   if (document.visibilityState === "visible") {
     queueDataResync();
   }
-}
-
-function startPassiveResync() {
-  if (passiveResyncTimer || typeof window === "undefined") return;
-  passiveResyncTimer = window.setInterval(() => {
-    if (!state.session) return;
-    queueDataResync();
-  }, PASSIVE_RESYNC_INTERVAL);
-}
-
-function stopPassiveResync() {
-  if (!passiveResyncTimer) return;
-  clearInterval(passiveResyncTimer);
-  passiveResyncTimer = null;
 }
 
 function handleBookmarkRealtimeChange(payload) {
@@ -2467,20 +3102,21 @@ function applyLaunchParams() {
 function hydrateBookmarkFormFromPayload(payload) {
   if (!ui.bookmarkForm) return;
   ui.bookmarkForm.reset();
+  setBookmarkFormGroup(null);
   if (payload.content && ui.bookmarkContent) {
     ui.bookmarkContent.value = payload.content;
   }
   if (payload.title && ui.bookmarkTitle) {
     ui.bookmarkTitle.value = payload.title;
   }
-  if (payload.group && ui.groupSelect) {
+  if (payload.group) {
     const target = state.groups.find((group) => {
       if (group.id === payload.group) return true;
       if (!group.name) return false;
       return group.name.toLowerCase() === payload.group.toLowerCase();
     });
     if (target) {
-      ui.groupSelect.value = target.id;
+      setBookmarkFormGroup(target.id);
     }
   }
   updatePreview();
