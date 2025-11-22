@@ -31,6 +31,20 @@ const supportsSwipeInteractions =
 const canUsePointerEvents =
   typeof window !== "undefined" && "PointerEvent" in window;
 const SESSION_CACHE_KEY = "bmarks.session";
+const GROUP_COLOR_STORAGE_KEY = "bmarks.groupColors";
+const GROUP_COLOR_PALETTE = [
+  "#2563EB",
+  "#DB2777",
+  "#10B981",
+  "#F97316",
+  "#F59E0B",
+  "#6366F1",
+  "#EC4899",
+  "#14B8A6",
+  "#F43F5E",
+  "#84CC16",
+  "#0EA5E9",
+];
 const hasStorage =
   typeof window !== "undefined" && "localStorage" in window;
 const authBroadcast = supportsBroadcast
@@ -67,11 +81,13 @@ const state = {
   editingBookmarkId: null,
   groupDeleteMode: false,
   pendingGroupDeleteId: null,
+  pendingGroupEditId: null,
   isLoadingBookmarks: false,
   bookmarkLoadError: null,
   isSavingBookmark: false,
   pendingBookmarkDeleteId: null,
   focusedBookmarkIndex: -1,
+  groupColors: loadStoredGroupColors(),
 };
 
 const ui = {
@@ -87,7 +103,9 @@ const ui = {
   groupPickerButton: document.getElementById("groupPickerButton"),
   groupForm: document.getElementById("groupForm"),
   groupNameInput: document.getElementById("groupNameInput"),
+  groupColorInput: document.getElementById("groupColorInput"),
   openGroupCreator: document.getElementById("openGroupCreator"),
+  openGroupEditor: document.getElementById("openGroupEditor"),
   openGroupDeleter: document.getElementById("openGroupDeleter"),
   groupDeleteName: document.getElementById("groupDeleteName"),
   confirmDeleteGroupButton: document.getElementById(
@@ -101,6 +119,14 @@ const ui = {
   groupSelect: document.getElementById("bookmarkGroup"),
   openBookmarkModal: document.getElementById("openBookmarkModal"),
   bookmarkModal: document.getElementById("bookmarkModal"),
+  groupEditModal: document.getElementById("editGroupModal"),
+  groupEditForm: document.getElementById("groupEditForm"),
+  groupEditSelect: document.getElementById("groupEditSelect"),
+  groupEditNameInput: document.getElementById("groupEditNameInput"),
+  groupEditColorInput: document.getElementById("groupEditColorInput"),
+  randomizeGroupColorButton: document.getElementById(
+    "randomizeGroupColorButton"
+  ),
   accountModal: document.getElementById("accountModal"),
   bookmarkForm: document.getElementById("bookmarkForm"),
     bookmarkContent: document.getElementById("bookmarkContent"),
@@ -129,6 +155,10 @@ dataBroadcast?.addEventListener("message", ({ data }) => {
   if (!data || data.clientId === clientId) return;
   if (data.type === "bookmarks:changed" || data.type === "groups:changed") {
     queueDataResync({ force: true });
+    return;
+  }
+  if (data.type === "groupColors:changed") {
+    refreshGroupColors(data.colors);
   }
 });
 
@@ -242,16 +272,18 @@ function attachAuthGuards() {
       )
     );
 
-    if (AUTH_STORAGE_KEY) {
-      window.addEventListener("storage", (event) => {
-        if (event.key === AUTH_STORAGE_KEY) {
-          refreshSession({
-            allowWait: true,
-            redirectOnFailure: false,
-          }).finally(() => queueDataResync({ force: true }));
-        }
-      });
+  window.addEventListener("storage", (event) => {
+    if (AUTH_STORAGE_KEY && event.key === AUTH_STORAGE_KEY) {
+      refreshSession({
+        allowWait: true,
+        redirectOnFailure: false,
+      }).finally(() => queueDataResync({ force: true }));
+      return;
     }
+    if (event.key === GROUP_COLOR_STORAGE_KEY) {
+      refreshGroupColors(parseGroupColorPayload(event.newValue));
+    }
+  });
 }
 
 function broadcastAuthState(hasSession) {
@@ -370,18 +402,36 @@ function bindGlobalEvents() {
     ui.groupForm?.classList.toggle("visible");
     if (ui.groupForm?.classList.contains("visible")) {
       ui.groupNameInput?.focus();
+      if (ui.groupColorInput) {
+        ui.groupColorInput.value =
+          suggestGroupColor(ui.groupNameInput?.value || "") ||
+          randomGroupColor();
+      }
     }
   });
   ui.openGroupDeleter?.addEventListener("click", () => {
     toggleGroupDeleteMode();
+  });
+  ui.openGroupEditor?.addEventListener("click", () => {
+    if (!state.groups.length) {
+      showCopyToast("Create a group first");
+      return;
+    }
+    populateGroupEditor(state.filters.groupId || state.groups[0]?.id || null);
+    openModal("editGroupModal");
   });
 
   ui.groupForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const name = ui.groupNameInput.value.trim();
     if (!name) return;
-    await createGroup(name);
+    const colorValue = sanitizeColorValue(ui.groupColorInput?.value);
+    await createGroup(name, colorValue);
     ui.groupNameInput.value = "";
+    if (ui.groupColorInput) {
+      ui.groupColorInput.value =
+        suggestGroupColor(ui.groupNameInput.value) || randomGroupColor();
+    }
     ui.groupForm.classList.remove("visible");
   });
 
@@ -399,21 +449,29 @@ function bindGlobalEvents() {
   });
 
   ui.openBookmarkModal?.addEventListener("click", () => {
-    ui.bookmarkForm?.reset();
-    enterBookmarkCreateMode();
-    updatePreview();
+    resetBookmarkForm({ focusContent: true });
     openModal("bookmarkModal");
-    ui.bookmarkContent?.focus();
   });
 
   ui.pasteBookmarkButton?.addEventListener("click", handlePasteBookmarkContent);
 
-  ui.bookmarkFormReset?.addEventListener("click", () => {
-    ui.bookmarkForm?.reset();
-    enterBookmarkCreateMode();
-    updatePreview();
-    ui.bookmarkContent?.focus();
+  ui.bookmarkFormReset?.addEventListener("click", () =>
+    resetBookmarkForm({ focusContent: true })
+  );
+
+  ui.groupEditSelect?.addEventListener("change", () => {
+    const targetId = ui.groupEditSelect?.value || "";
+    if (targetId) {
+      hydrateGroupEditorFields(targetId);
+    }
   });
+
+  ui.groupEditForm?.addEventListener("submit", handleGroupEditSubmit);
+
+  ui.randomizeGroupColorButton?.addEventListener(
+    "click",
+    handleRandomizeGroupColorClick
+  );
 
   ui.userChip?.addEventListener("click", () => {
     const isOpen = ui.userMenu?.getAttribute("data-open") === "true";
@@ -638,6 +696,7 @@ async function fetchGroups() {
   }
 
   state.groups = data || [];
+  pruneStaleGroupColors();
   syncBookmarkGroupNames();
   renderGroups();
   renderBookmarks();
@@ -674,6 +733,12 @@ function renderGroups() {
           : counts.all || 0;
       const tagClass =
         deleteMode && group.id ? "tag danger" : "tag muted tiny";
+      const name = group.name || "Untitled group";
+      const color =
+        !group.id || deleteMode
+          ? null
+          : getGroupColor(group.id, name) || null;
+      const chipColor = color || "rgba(255,255,255,0.2)";
       return `
         <button
           type="button"
@@ -683,7 +748,10 @@ function renderGroups() {
           data-group-id="${group.id ?? ""}"
           ${isAll && deleteMode ? "data-disabled=true" : ""}
         >
-          <span>${escapeHtml(group.name)}</span>
+          <span class="group-option-content">
+            <span class="group-color-chip" style="--group-color:${chipColor}"></span>
+            <span class="group-option-name">${escapeHtml(name)}</span>
+          </span>
           <span class="${tagClass}">${countLabel}</span>
         </button>
       `;
@@ -725,6 +793,34 @@ function renderGroups() {
       ? "Cancel delete"
       : "Delete group";
   }
+
+  refreshGroupEditorControls();
+}
+
+function refreshGroupEditorControls() {
+  const hasGroups = Boolean(state.groups.length);
+  if (ui.openGroupEditor) {
+    ui.openGroupEditor.disabled = !hasGroups;
+  }
+  if (!ui.groupEditSelect) return;
+  const modalOpen = ui.groupEditModal?.getAttribute("aria-hidden") === "false";
+  if (modalOpen) return;
+  if (!hasGroups) {
+    ui.groupEditSelect.innerHTML = `<option value="">No groups yet</option>`;
+    ui.groupEditSelect.setAttribute("disabled", "disabled");
+    return;
+  }
+  ui.groupEditSelect.removeAttribute("disabled");
+  ui.groupEditSelect.innerHTML = state.groups
+    .map(
+      (group) =>
+        `<option value="${group.id}">${escapeHtml(group.name)}</option>`
+    )
+    .join("");
+  const defaultId = state.filters.groupId || state.groups[0]?.id || "";
+  if (defaultId) {
+    ui.groupEditSelect.value = defaultId;
+  }
 }
 
 function toggleGroupDeleteMode(force) {
@@ -764,6 +860,8 @@ async function confirmDeleteGroup() {
     return;
   }
   state.groups = state.groups.filter((entry) => entry.id !== groupId);
+  clearGroupColor(groupId, { silent: true });
+  pruneStaleGroupColors();
     syncBookmarkGroupNames();
   if (state.filters.groupId === groupId) {
     state.filters.groupId = null;
@@ -776,6 +874,98 @@ async function confirmDeleteGroup() {
   renderBookmarks();
   closeModal("deleteGroupModal");
   notifyDataChange("groups:changed");
+}
+
+function populateGroupEditor(targetId = null) {
+  if (!ui.groupEditSelect) return;
+  if (!state.groups.length) {
+    ui.groupEditSelect.innerHTML = `<option value="">No groups yet</option>`;
+    ui.groupEditSelect.setAttribute("disabled", "disabled");
+    return;
+  }
+  ui.groupEditSelect.removeAttribute("disabled");
+  ui.groupEditSelect.innerHTML = state.groups
+    .map(
+      (group) =>
+        `<option value="${group.id}">${escapeHtml(group.name)}</option>`
+    )
+    .join("");
+  const selected =
+    targetId ||
+    state.pendingGroupEditId ||
+    state.filters.groupId ||
+    state.groups[0]?.id ||
+    "";
+  if (selected) {
+    ui.groupEditSelect.value = selected;
+    hydrateGroupEditorFields(selected);
+  }
+}
+
+function hydrateGroupEditorFields(groupId) {
+  const group = state.groups.find((entry) => entry.id === groupId);
+  if (!group) return;
+  state.pendingGroupEditId = groupId;
+  if (ui.groupEditNameInput) {
+    ui.groupEditNameInput.value = group.name || "";
+  }
+  if (ui.groupEditColorInput) {
+    const color =
+      state.groupColors[groupId] || getGroupColor(groupId, group.name || "");
+    ui.groupEditColorInput.value = color || randomGroupColor();
+  }
+}
+
+async function handleGroupEditSubmit(event) {
+  event.preventDefault();
+  if (!state.session || !ui.groupEditSelect) return;
+  const groupId = ui.groupEditSelect.value;
+  if (!groupId) return;
+  const group = state.groups.find((entry) => entry.id === groupId);
+  if (!group) return;
+  const nextName = ui.groupEditNameInput?.value.trim() || group.name;
+  const nextColor = sanitizeColorValue(ui.groupEditColorInput?.value);
+  const updates = {};
+  if (nextName && nextName !== group.name) {
+    updates.name = nextName;
+  }
+  if (Object.keys(updates).length) {
+    const { error } = await supabase
+      .from("groups")
+      .update(updates)
+      .eq("id", groupId)
+      .eq("user_id", state.session.user.id);
+    if (error) {
+      console.error("Failed to update group", error);
+      return;
+    }
+    state.groups = state.groups.map((entry) =>
+      entry.id === groupId ? { ...entry, ...updates } : entry
+    );
+  }
+  if (nextColor) {
+    setGroupColor(groupId, nextColor);
+  }
+  state.pendingGroupEditId = null;
+  if (state.filters.groupId === groupId && ui.activeGroupLabel) {
+    ui.activeGroupLabel.textContent = nextName || group.name || "All bookmarks";
+  }
+  syncBookmarkGroupNames();
+  renderGroups();
+  renderBookmarks();
+  notifyDataChange("groups:changed");
+  closeModal("editGroupModal");
+}
+
+function handleRandomizeGroupColorClick(event) {
+  event.preventDefault();
+  if (!ui.groupEditColorInput) return;
+  ui.groupEditColorInput.value = randomGroupColor();
+}
+
+function resetGroupEditForm() {
+  state.pendingGroupEditId = null;
+  ui.groupEditForm?.reset();
 }
 
 function promptDeleteBookmark(bookmark) {
@@ -798,7 +988,7 @@ async function confirmDeleteBookmark() {
   closeModal("deleteBookmarkModal");
 }
 
-async function createGroup(name) {
+async function createGroup(name, color) {
   if (!state.session) return;
   const { data, error } = await supabase
     .from("groups")
@@ -810,6 +1000,10 @@ async function createGroup(name) {
     return;
   }
   state.groups.push(data);
+  if (color) {
+    setGroupColor(data.id, color, { silent: true });
+    broadcastGroupColorsChange();
+  }
   syncBookmarkGroupNames();
   renderGroups();
   renderBookmarks();
@@ -848,6 +1042,7 @@ function normalizeBookmark(raw) {
   return {
     ...raw,
     groupName: group?.name || null,
+    groupColor: getGroupColor(raw.group_id, group?.name || ""),
     metadata: raw.metadata || {},
     created_at: raw.created_at,
   };
@@ -919,7 +1114,9 @@ function renderBookmarkRow(bookmark, visibleIndex) {
     ? `<span class="bookmark-domain">${domain}</span>`
     : "";
   const groupChip = bookmark.groupName
-    ? `<span class="tag">${escapeHtml(bookmark.groupName)}</span>`
+    ? `<span class="bookmark-group-tag" style="--tag-color:${
+        bookmark.groupColor || "#a1a1aa"
+      }">${escapeHtml(bookmark.groupName)}</span>`
     : "";
   const metaPieces = [domainChip, groupChip].filter(Boolean);
   const metaInline = metaPieces.length
@@ -1287,6 +1484,16 @@ function enterBookmarkCreateMode() {
   ui.bookmarkTitle?.setCustomValidity("");
 }
 
+function resetBookmarkForm(options = {}) {
+  const { focusContent = false } = options;
+  ui.bookmarkForm?.reset();
+  enterBookmarkCreateMode();
+  updatePreview();
+  if (focusContent) {
+    ui.bookmarkContent?.focus();
+  }
+}
+
 function startEditingBookmark(bookmark) {
   state.editingBookmarkId = bookmark.id;
   if (ui.bookmarkContent) ui.bookmarkContent.value = bookmark.content;
@@ -1318,8 +1525,7 @@ async function deleteBookmarkById(bookmarkId) {
   state.focusedBookmarkIndex = -1;
   renderBookmarks();
   renderGroups();
-  ui.bookmarkForm?.reset();
-  enterBookmarkCreateMode();
+  resetBookmarkForm();
   notifyDataChange("bookmarks:changed");
 }
 
@@ -1443,7 +1649,9 @@ async function handleBookmarkSubmit(event) {
 
   state.isSavingBookmark = true;
   ui.saveBookmarkButton?.setAttribute("disabled", "disabled");
-  closeModal("bookmarkModal");
+  closeModal("bookmarkModal", { skipReset: true });
+  const editingId = state.editingBookmarkId;
+  let saveSucceeded = false;
 
   try {
     const basePayload = {
@@ -1462,12 +1670,12 @@ async function handleBookmarkSubmit(event) {
     };
 
     let record;
-    if (state.editingBookmarkId) {
+    if (editingId) {
       const updatePayload = { ...basePayload };
       const { data, error } = await supabase
         .from("bookmarks")
         .update(updatePayload)
-        .eq("id", state.editingBookmarkId)
+        .eq("id", editingId)
         .select()
         .single();
       if (error) {
@@ -1500,15 +1708,18 @@ async function handleBookmarkSubmit(event) {
     }
 
     renderBookmarks();
-    ui.bookmarkForm.reset();
-    enterBookmarkCreateMode();
-    updatePreview();
+    renderGroups();
+    resetBookmarkForm();
+    saveSucceeded = true;
     if (bookmarkMutationOccurred) {
       notifyDataChange("bookmarks:changed");
     }
   } finally {
     state.isSavingBookmark = false;
     ui.saveBookmarkButton?.removeAttribute("disabled");
+    if (!saveSucceeded && !state.editingBookmarkId) {
+      enterBookmarkCreateMode();
+    }
   }
 }
 
@@ -1581,18 +1792,33 @@ async function resolveTitle(detected) {
 
 async function fetchPageTitle(url) {
   try {
-    const normalized = /^(https?:\/\/)/i.test(url) ? url : `https://${url}`;
-    const response = await fetch(`https://r.jina.ai/${normalized}`);
+    const normalized = normalizeExternalUrl(url);
+    if (!normalized) return null;
+    const proxiedUrl = buildTitleProxyUrl(normalized);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const response = await fetch(proxiedUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!response.ok) return null;
     const text = await response.text();
-    const match = text.match(/<title[^>]*>(.*?)<\/title>/i);
-    if (match) {
-      return new DOMParser()
-        .parseFromString(match[1], "text/html")
-        .body.textContent?.trim();
-    }
+    const doc = new DOMParser().parseFromString(text, "text/html");
+    const candidates = [
+      doc
+        .querySelector("meta[property='og:title']")
+        ?.getAttribute("content"),
+      doc.querySelector("meta[name='og:title']")?.getAttribute("content"),
+      doc
+        .querySelector("meta[property='twitter:title']")
+        ?.getAttribute("content"),
+      doc.querySelector("title")?.textContent,
+    ]
+      .map((value) => value?.trim())
+      .filter(Boolean);
+    return candidates[0] || null;
   } catch (error) {
-    console.warn("Unable to fetch page title", error);
+    if (error.name !== "AbortError") {
+      console.warn("Unable to fetch page title", error);
+    }
   }
   return null;
 }
@@ -1651,20 +1877,23 @@ function openModal(id) {
   modal.setAttribute("aria-hidden", "false");
 }
 
-function closeModal(id) {
+function closeModal(id, options = {}) {
+  const { skipReset = false } = options;
   const modal = document.getElementById(id);
   if (!modal) return;
   modal.setAttribute("aria-hidden", "true");
   if (id === "bookmarkModal") {
-    enterBookmarkCreateMode();
-    ui.bookmarkForm?.reset();
-    updatePreview();
+    if (!skipReset) {
+      resetBookmarkForm();
+    }
   } else if (id === "deleteGroupModal") {
     state.pendingGroupDeleteId = null;
     state.groupDeleteMode = false;
     renderGroups();
   } else if (id === "deleteBookmarkModal") {
     state.pendingBookmarkDeleteId = null;
+  } else if (id === "editGroupModal") {
+    resetGroupEditForm();
   }
 }
 
@@ -1711,6 +1940,18 @@ function safeHostname(url = "") {
   } catch (_e) {
     return "";
   }
+}
+
+function normalizeExternalUrl(url = "") {
+  if (!url) return "";
+  return /^(https?:\/\/)/i.test(url) ? url : `https://${url}`;
+}
+
+function buildTitleProxyUrl(targetUrl) {
+  const encodedTarget = encodeURIComponent(targetUrl)
+    .replace(/%3A/gi, ":")
+    .replace(/%2F/gi, "/");
+  return `https://r.jina.ai/${encodedTarget}`;
 }
 
 function prettifyHostname(hostname = "") {
@@ -1804,13 +2045,170 @@ function clearRealtimeRetry() {
   realtimeRetryTimer = null;
 }
 
-function notifyDataChange(topic) {
+function notifyDataChange(topic, payload = {}) {
   if (!dataBroadcast) return;
   dataBroadcast.postMessage({
     type: topic,
     clientId,
     timestamp: Date.now(),
+    ...payload,
   });
+}
+
+function broadcastGroupColorsChange(colors = state.groupColors) {
+  notifyDataChange("groupColors:changed", { colors });
+}
+
+function refreshGroupColors(externalColors) {
+  if (externalColors && typeof externalColors === "object") {
+    state.groupColors = sanitizeGroupColorMap(externalColors);
+  } else {
+    state.groupColors = loadStoredGroupColors();
+    persistGroupColors();
+  }
+  syncBookmarkGroupNames();
+  renderGroups();
+  renderBookmarks();
+}
+
+function loadStoredGroupColors() {
+  if (!hasStorage) return {};
+  try {
+    const raw = localStorage.getItem(GROUP_COLOR_STORAGE_KEY);
+    if (!raw) return {};
+    return sanitizeGroupColorMap(JSON.parse(raw));
+  } catch (error) {
+    console.warn("Unable to load group colors", error);
+    return {};
+  }
+}
+
+function persistGroupColors() {
+  if (!hasStorage) return;
+  try {
+    localStorage.setItem(
+      GROUP_COLOR_STORAGE_KEY,
+      JSON.stringify(state.groupColors || {})
+    );
+  } catch (error) {
+    console.warn("Unable to persist group colors", error);
+  }
+}
+
+function sanitizeGroupColorMap(raw = {}) {
+  return Object.entries(raw || {}).reduce((acc, [groupId, value]) => {
+    const sanitized = sanitizeColorValue(value);
+    if (sanitized) {
+      acc[groupId] = sanitized;
+    }
+    return acc;
+  }, {});
+}
+
+function parseGroupColorPayload(payload) {
+  if (!payload) return {};
+  try {
+    return sanitizeGroupColorMap(JSON.parse(payload));
+  } catch (_error) {
+    return {};
+  }
+}
+
+function sanitizeColorValue(value) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed.length) return null;
+  let normalized = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalized)) {
+    if (normalized.length === 4) {
+      normalized =
+        "#" +
+        normalized
+          .slice(1)
+          .split("")
+          .map((char) => `${char}${char}`)
+          .join("");
+    }
+    return normalized.toUpperCase();
+  }
+  return null;
+}
+
+function randomGroupColor() {
+  const index = Math.floor(Math.random() * GROUP_COLOR_PALETTE.length);
+  return GROUP_COLOR_PALETTE[index];
+}
+
+function suggestGroupColor(seed = "") {
+  return seed ? colorFromSeed(seed) : randomGroupColor();
+}
+
+function setGroupColor(groupId, color, options = {}) {
+  if (!groupId) return false;
+  const sanitized = sanitizeColorValue(color);
+  if (!sanitized) return false;
+  if (state.groupColors[groupId] === sanitized) return false;
+  state.groupColors = {
+    ...state.groupColors,
+    [groupId]: sanitized,
+  };
+  persistGroupColors();
+  if (!options.silent) {
+    syncBookmarkGroupNames();
+    renderGroups();
+    renderBookmarks();
+    broadcastGroupColorsChange();
+  }
+  return true;
+}
+
+function clearGroupColor(groupId, options = {}) {
+  if (!groupId || !state.groupColors[groupId]) return false;
+  const next = { ...state.groupColors };
+  delete next[groupId];
+  state.groupColors = next;
+  persistGroupColors();
+  if (!options.silent) {
+    syncBookmarkGroupNames();
+    renderGroups();
+    renderBookmarks();
+    broadcastGroupColorsChange();
+  }
+  return true;
+}
+
+function pruneStaleGroupColors() {
+  const validIds = new Set(state.groups.map((group) => group.id));
+  const next = {};
+  Object.entries(state.groupColors || {}).forEach(([groupId, color]) => {
+    if (validIds.has(groupId) && color) {
+      next[groupId] = color;
+    }
+  });
+  if (Object.keys(next).length === Object.keys(state.groupColors || {}).length) {
+    return;
+  }
+  state.groupColors = next;
+  persistGroupColors();
+}
+
+function getGroupColor(groupId, fallbackSeed = "") {
+  if (!groupId) return null;
+  if (state.groupColors[groupId]) {
+    return state.groupColors[groupId];
+  }
+  const group = state.groups.find((entry) => entry.id === groupId);
+  const seed = fallbackSeed || group?.name || groupId;
+  return seed ? colorFromSeed(seed) : randomGroupColor();
+}
+
+function colorFromSeed(seed = "") {
+  if (!seed) return GROUP_COLOR_PALETTE[0];
+  const hash = [...seed].reduce(
+    (acc, char) => acc + char.charCodeAt(0),
+    0
+  );
+  return GROUP_COLOR_PALETTE[hash % GROUP_COLOR_PALETTE.length];
 }
 
 function queueDataResync(options = {}) {
@@ -1894,10 +2292,8 @@ function handleBookmarkRealtimeChange(payload) {
   state.bookmarks.sort(
     (a, b) => new Date(b.created_at) - new Date(a.created_at)
   );
-  if (eventType === "INSERT") {
     renderGroups();
-  }
-  renderBookmarks();
+    renderBookmarks();
 }
 
 function handleGroupRealtimeChange(payload) {
@@ -1908,6 +2304,10 @@ function handleGroupRealtimeChange(payload) {
     const deletedId = payload.old?.id;
     if (!deletedId) return;
     state.groups = state.groups.filter((group) => group.id !== deletedId);
+    const removedColor = clearGroupColor(deletedId, { silent: true });
+    if (removedColor) {
+      broadcastGroupColorsChange();
+    }
     if (state.filters.groupId === deletedId) {
       state.filters.groupId = null;
       if (ui.activeGroupLabel) {
@@ -1928,6 +2328,7 @@ function handleGroupRealtimeChange(payload) {
     state.groups.sort((a, b) => a.name.localeCompare(b.name));
   }
 
+    pruneStaleGroupColors();
   syncBookmarkGroupNames();
   renderGroups();
   renderBookmarks();
@@ -1940,6 +2341,10 @@ function syncBookmarkGroupNames() {
     groupName:
       state.groups.find((group) => group.id === bookmark.group_id)?.name ||
       null,
+    groupColor: getGroupColor(
+      bookmark.group_id,
+      state.groups.find((group) => group.id === bookmark.group_id)?.name || ""
+    ),
   }));
 }
 

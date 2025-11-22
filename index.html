@@ -99,18 +99,34 @@
                   <button type="button" class="group-action-button" id="openGroupCreator">
                     + New group
                   </button>
+                    <button type="button" class="group-action-button" id="openGroupEditor">
+                      Edit group
+                    </button>
                   <button type="button" class="group-action-button danger" id="openGroupDeleter">
                     Delete group
                   </button>
                 </div>
                 <form class="group-form" id="groupForm">
-                  <input
-                    id="groupNameInput"
-                    name="groupName"
-                    placeholder="Group name"
-                    autocomplete="off"
-                    required
-                  />
+                  <div class="group-form-row">
+                    <input
+                      type="text"
+                      id="groupNameInput"
+                      name="groupName"
+                      placeholder="Group name"
+                      autocomplete="off"
+                      required
+                    />
+                    <label class="group-color-picker" for="groupColorInput">
+                      <span>Color</span>
+                      <input
+                        type="color"
+                        id="groupColorInput"
+                        name="groupColor"
+                        value="#6366f1"
+                        aria-label="Group color"
+                      />
+                    </label>
+                  </div>
                   <button type="submit">Create</button>
                 </form>
               </div>
@@ -357,6 +373,55 @@
         </div>
       </div>
     </div>
+
+      <div class="modal" id="editGroupModal" aria-hidden="true">
+        <div class="modal-content small">
+          <div class="modal-header">
+            <h2 class="modal-title">Edit group</h2>
+            <button type="button" class="modal-close" data-close-modal aria-label="Close">
+              <svg width="20" height="20" viewBox="0 0 20 20">
+                <path d="M15 5L5 15M5 5l10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
+          <form class="modal-body" id="groupEditForm">
+            <div class="form-group">
+              <label class="form-label" for="groupEditSelect">Select group</label>
+              <select id="groupEditSelect" class="form-select" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="groupEditNameInput">Group name</label>
+              <input
+                type="text"
+                id="groupEditNameInput"
+                class="form-input"
+                name="groupEditName"
+                placeholder="Group name"
+                autocomplete="off"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="groupEditColorInput">Group color</label>
+              <div class="group-color-controls">
+                <input
+                  type="color"
+                  id="groupEditColorInput"
+                  name="groupEditColor"
+                  value="#6366f1"
+                  aria-label="Group color picker"
+                />
+                <button type="button" class="ghost-chip tertiary" id="randomizeGroupColorButton">Randomize</button>
+              </div>
+              <p class="form-hint">Pick a color to highlight this group.</p>
+            </div>
+            <div class="modal-actions simple">
+              <button type="submit" class="btn-primary">Save changes</button>
+              <button type="button" class="btn-danger" data-close-modal>Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
 
       <div id="copyToast" class="toast" aria-live="polite"></div>
 

@@ -317,6 +317,12 @@ a {
   color: var(--text-primary);
 }
 
+.group-action-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: transparent;
+}
+
 .group-action-button.danger {
   color: #f87171;
 }
@@ -336,6 +342,32 @@ a {
   cursor: pointer;
   transition: background 0.15s ease;
   text-align: left;
+}
+
+.group-option-content {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.group-option-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-color-chip {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--group-color, var(--border-subtle));
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
 }
 
 .group-option:hover {
@@ -381,7 +413,14 @@ a {
   display: block;
 }
 
-.group-form input {
+.group-form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.group-form input[type="text"],
+.group-form input:not([type]) {
   width: 100%;
   padding: 0.5rem;
   background: transparent;
@@ -393,9 +432,54 @@ a {
   margin-bottom: 0.5rem;
 }
 
-.group-form input:focus {
+.group-form input[type="text"]:focus,
+.group-form input:not([type]):focus {
   outline: none;
   border-color: var(--text-secondary);
+}
+
+.group-color-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-family: var(--font-geist-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.group-color-picker span {
+  pointer-events: none;
+}
+
+.group-color-picker input[type="color"] {
+  appearance: none;
+  border: none;
+  background: transparent;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.group-color-picker input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.group-color-picker input[type="color"]::-webkit-color-swatch {
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.group-color-picker input[type="color"]::-moz-color-swatch {
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .group-form button {
@@ -416,10 +500,50 @@ a {
   background: var(--border-subtle);
 }
 
+.group-color-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.group-color-controls input[type="color"] {
+  appearance: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.group-color-controls input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.group-color-controls input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 10px;
+}
+
+.group-color-controls input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 10px;
+}
+
+.form-hint {
+  font-family: var(--font-geist-mono);
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  margin-top: -0.2rem;
+}
+
 /* Search Bar */
 .search-container {
   position: relative;
-  max-width: 720px;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto 2rem;
 }
 
@@ -883,6 +1007,21 @@ a {
   font-size: 0.72rem;
   color: var(--text-secondary);
   min-width: 0;
+}
+
+.bookmark-group-tag {
+  --tag-color: #a1a1aa;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.5rem;
+  border-radius: 999px;
+  font-family: var(--font-geist-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--tag-color);
 }
 
 .bookmark-domain {
