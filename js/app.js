@@ -32,6 +32,9 @@ const canUsePointerEvents =
   typeof window !== "undefined" && "PointerEvent" in window;
 const SESSION_CACHE_KEY = "bmarks.session";
 const GROUP_COLOR_STORAGE_KEY = "bmarks.groupColors";
+const OFFLINE_MODE_KEY = "bmarks.offlineMode";
+const OFFLINE_BOOKMARKS_KEY = "bmarks.offlineBookmarks";
+const OFFLINE_GROUPS_KEY = "bmarks.offlineGroups";
 const GROUP_COLOR_PALETTE = [
   "#2563EB",
   "#DB2777",
@@ -71,6 +74,7 @@ let globalDragDepth = 0;
 
 const state = {
   session: null,
+  isOffline: false,
   groups: [],
   bookmarks: [],
   visibleBookmarks: [],
@@ -198,10 +202,39 @@ async function init() {
   bindGlobalEvents();
   await Promise.all([fetchGroups(), fetchBookmarks()]);
   applyLaunchParams();
-  subscribeToRealtime();
+  if (!state.isOffline) {
+    subscribeToRealtime();
+  }
+}
+
+function isOfflineMode() {
+  return hasStorage && localStorage.getItem(OFFLINE_MODE_KEY) === "true";
+}
+
+function createOfflineSession() {
+  return {
+    user: {
+      id: "offline-user",
+      email: "offline@local",
+      user_metadata: {
+        full_name: "Offline User",
+        avatar_url: null,
+      },
+    },
+    access_token: "offline",
+    refresh_token: "offline",
+  };
 }
 
 async function ensureSession() {
+  if (isOfflineMode()) {
+    const offlineSession = createOfflineSession();
+    state.session = offlineSession;
+    state.isOffline = true;
+    hydrateUserChip(offlineSession.user);
+    return offlineSession;
+  }
+
   let session = await fetchSession();
 
   if (!session) {
@@ -219,6 +252,7 @@ async function ensureSession() {
   }
 
   state.session = session;
+  state.isOffline = false;
   hydrateUserChip(session.user);
   cacheSession(session);
   clearAuthHash();
@@ -344,11 +378,15 @@ async function refreshSession(options = {}) {
 }
 
 function hydrateUserChip(user) {
-  const avatarUrl =
-    user.user_metadata?.avatar_url ||
-    user.user_metadata?.picture ||
-    user.user_metadata?.profile_picture;
-  const initials = user.email
+  const isOffline = state.isOffline;
+  const avatarUrl = isOffline
+    ? null
+    : user.user_metadata?.avatar_url ||
+      user.user_metadata?.picture ||
+      user.user_metadata?.profile_picture;
+  const initials = isOffline
+    ? "OFF"
+    : user.email
     ? user.email
         .split("@")[0]
         .split(".")
@@ -362,18 +400,29 @@ function hydrateUserChip(user) {
     } else {
       ui.userAvatar.textContent = initials || "B";
     }
+    if (isOffline) {
+      ui.userAvatar.classList.add("offline-mode");
+    } else {
+      ui.userAvatar.classList.remove("offline-mode");
+    }
   }
   if (ui.userName) {
-    ui.userName.textContent = user.user_metadata?.full_name || "BMarks user";
+    ui.userName.textContent = isOffline
+      ? "Offline Mode"
+      : user.user_metadata?.full_name || "BMarks user";
   }
   if (ui.userEmail) {
-    ui.userEmail.textContent = user.email ?? "Unknown";
+    ui.userEmail.textContent = isOffline
+      ? "Data stored locally"
+      : user.email ?? "Unknown";
   }
   if (ui.menuUserEmail) {
-    ui.menuUserEmail.textContent = user.email ?? "";
+    ui.menuUserEmail.textContent = isOffline ? "Local storage only" : user.email ?? "";
   }
   if (ui.displayNameInput) {
-    ui.displayNameInput.value = user.user_metadata?.full_name || "";
+    ui.displayNameInput.value = isOffline
+      ? ""
+      : user.user_metadata?.full_name || "";
   }
   if (ui.accountInfo) {
     ui.accountInfo.textContent = `Member since ${formatDate(
@@ -566,11 +615,19 @@ function bindGlobalEvents() {
   );
 
   ui.signOutBtn?.addEventListener("click", async () => {
+    if (state.isOffline) {
+      exitOfflineMode();
+      return;
+    }
     await supabase.auth.signOut();
   });
 
   ui.accountForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (state.isOffline) {
+      closeModal("accountModal");
+      return;
+    }
     const displayName = ui.displayNameInput.value.trim();
     const { error } = await supabase.auth.updateUser({
       data: { full_name: displayName || null },
@@ -787,6 +844,16 @@ function toggleUserMenu(force) {
 
 async function fetchGroups() {
   if (!state.session) return;
+
+  if (state.isOffline) {
+    state.groups = getOfflineGroups();
+    pruneStaleGroupColors();
+    syncBookmarkGroupNames();
+    renderGroups();
+    renderBookmarks();
+    return;
+  }
+
   const { data, error } = await supabase
     .from("groups")
     .select("id,name,created_at")
@@ -1054,6 +1121,26 @@ async function confirmDeleteGroup() {
     closeModal("deleteGroupModal");
     return;
   }
+
+  if (state.isOffline) {
+    state.groups = state.groups.filter((entry) => entry.id !== groupId);
+    saveOfflineGroups(state.groups);
+    clearGroupColor(groupId, { silent: true });
+    pruneStaleGroupColors();
+    syncBookmarkGroupNames();
+    if (state.filters.groupId === groupId) {
+      state.filters.groupId = null;
+      ui.activeGroupLabel.textContent = "All bookmarks";
+    }
+    state.focusedBookmarkIndex = -1;
+    state.groupDeleteMode = false;
+    state.pendingGroupDeleteId = null;
+    renderGroups();
+    renderBookmarks();
+    closeModal("deleteGroupModal");
+    return;
+  }
+
   const { error } = await supabase
     .from("groups")
     .delete()
@@ -1143,6 +1230,27 @@ async function handleGroupEditSubmit(event) {
   submitButton?.setAttribute("disabled", "disabled");
   let colorChanged = false;
   try {
+    if (state.isOffline) {
+      if (hasNameChange) {
+        group.name = updates.name;
+        state.groups.sort((a, b) => a.name.localeCompare(b.name));
+        saveOfflineGroups(state.groups);
+      }
+      if (nextColor) {
+        colorChanged = Boolean(setGroupColor(groupId, nextColor));
+      }
+      state.pendingGroupEditId = null;
+      if (state.filters.groupId === groupId && ui.activeGroupLabel) {
+        ui.activeGroupLabel.textContent = nextName || group.name || "All bookmarks";
+      }
+      syncBookmarkGroupNames();
+      renderGroups();
+      renderBookmarks();
+      showCopyToast("Group updated");
+      closeModal("editGroupModal");
+      return;
+    }
+
     if (hasNameChange) {
       const { error } = await supabase
         .from("groups")
@@ -1214,6 +1322,28 @@ async function confirmDeleteBookmark() {
 
 async function createGroup(name, color) {
   if (!state.session) return;
+
+  if (state.isOffline) {
+    const newGroup = {
+      id: generateOfflineId(),
+      name,
+      created_at: new Date().toISOString(),
+      user_id: "offline-user",
+    };
+    state.groups.push(newGroup);
+    state.groups.sort((a, b) => a.name.localeCompare(b.name));
+    saveOfflineGroups(state.groups);
+    if (color) {
+      setGroupColor(newGroup.id, color, { silent: true });
+      broadcastGroupColorsChange();
+    }
+    syncBookmarkGroupNames();
+    renderGroups();
+    renderBookmarks();
+    toggleGroupDeleteMode(false);
+    return;
+  }
+
   const { data, error } = await supabase
     .from("groups")
     .insert({ name, user_id: state.session.user.id })
@@ -1240,6 +1370,16 @@ async function fetchBookmarks() {
   state.isLoadingBookmarks = true;
   state.bookmarkLoadError = null;
   renderBookmarks();
+
+  if (state.isOffline) {
+    state.isLoadingBookmarks = false;
+    const offlineData = getOfflineBookmarks();
+    state.bookmarks = offlineData.map(normalizeBookmark);
+    renderBookmarks();
+    renderGroups();
+    return;
+  }
+
   const { data, error } = await supabase
     .from("bookmarks")
     .select(
@@ -1762,6 +1902,25 @@ function startEditingBookmark(bookmark) {
 
 async function deleteBookmarkById(bookmarkId) {
   if (!bookmarkId) return;
+
+  if (state.isOffline) {
+    state.bookmarks = state.bookmarks.filter(
+      (bookmark) => bookmark.id !== bookmarkId
+    );
+    const offlineBookmarks = getOfflineBookmarks().filter(
+      (bookmark) => bookmark.id !== bookmarkId
+    );
+    saveOfflineBookmarks(offlineBookmarks);
+    if (state.editingBookmarkId === bookmarkId) {
+      state.editingBookmarkId = null;
+    }
+    state.focusedBookmarkIndex = -1;
+    renderBookmarks();
+    renderGroups();
+    resetBookmarkForm();
+    return;
+  }
+
   const { error } = await supabase
     .from("bookmarks")
     .delete()
@@ -1936,6 +2095,10 @@ async function handleBookmarkSubmit(event) {
     let imageMetadata = null;
     const noteForImage = detected.type === "image" ? rawContent || null : null;
     if (detected.type === "image") {
+      if (state.isOffline && hasPendingImage) {
+        showCopyToast("Image uploads are not available in offline mode.");
+        return;
+      }
       try {
         let uploadResult = null;
         if (hasPendingImage) {
@@ -2002,7 +2165,38 @@ async function handleBookmarkSubmit(event) {
     };
 
     let record;
-    if (editingId) {
+    if (state.isOffline) {
+      if (editingId) {
+        record = {
+          id: editingId,
+          ...basePayload,
+          created_at:
+            state.bookmarks.find((b) => b.id === editingId)?.created_at ||
+            new Date().toISOString(),
+          user_id: "offline-user",
+        };
+        state.bookmarks = state.bookmarks.map((bookmark) =>
+          bookmark.id === record.id ? normalizeBookmark(record) : bookmark
+        );
+        const offlineBookmarks = getOfflineBookmarks().map((bookmark) =>
+          bookmark.id === record.id ? record : bookmark
+        );
+        saveOfflineBookmarks(offlineBookmarks);
+        bookmarkMutationOccurred = true;
+      } else {
+        record = {
+          id: generateOfflineId(),
+          ...basePayload,
+          created_at: new Date().toISOString(),
+          user_id: "offline-user",
+        };
+        state.bookmarks = [normalizeBookmark(record), ...state.bookmarks];
+        const offlineBookmarks = getOfflineBookmarks();
+        offlineBookmarks.unshift(record);
+        saveOfflineBookmarks(offlineBookmarks);
+        bookmarkMutationOccurred = true;
+      }
+    } else if (editingId) {
       const updatePayload = { ...basePayload };
       const { data, error } = await supabase
         .from("bookmarks")
@@ -3053,6 +3247,56 @@ function clearCachedSession() {
   } catch (error) {
     console.warn("Unable to clear cached session", error);
   }
+}
+
+function getOfflineBookmarks() {
+  if (!hasStorage) return [];
+  try {
+    const raw = localStorage.getItem(OFFLINE_BOOKMARKS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (error) {
+    console.warn("Unable to load offline bookmarks", error);
+    return [];
+  }
+}
+
+function saveOfflineBookmarks(bookmarks) {
+  if (!hasStorage) return;
+  try {
+    localStorage.setItem(OFFLINE_BOOKMARKS_KEY, JSON.stringify(bookmarks));
+  } catch (error) {
+    console.warn("Unable to save offline bookmarks", error);
+  }
+}
+
+function getOfflineGroups() {
+  if (!hasStorage) return [];
+  try {
+    const raw = localStorage.getItem(OFFLINE_GROUPS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (error) {
+    console.warn("Unable to load offline groups", error);
+    return [];
+  }
+}
+
+function saveOfflineGroups(groups) {
+  if (!hasStorage) return;
+  try {
+    localStorage.setItem(OFFLINE_GROUPS_KEY, JSON.stringify(groups));
+  } catch (error) {
+    console.warn("Unable to save offline groups", error);
+  }
+}
+
+function generateOfflineId() {
+  return `offline-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function exitOfflineMode() {
+  if (!hasStorage) return;
+  localStorage.removeItem(OFFLINE_MODE_KEY);
+  window.location.replace("/login.html");
 }
 
 function clearAuthHash() {

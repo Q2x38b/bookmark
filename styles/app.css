@@ -300,6 +300,12 @@ textarea {
   font-weight: 600;
 }
 
+.avatar.offline-mode {
+  background: linear-gradient(135deg, #4a3f2b, #3d3326);
+  font-size: 0.65rem;
+  letter-spacing: -0.5px;
+}
+
 .user-copy {
   display: flex;
   flex-direction: column;

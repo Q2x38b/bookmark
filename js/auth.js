@@ -18,6 +18,9 @@ const supabase = createClient(env.url, env.anonKey, {
 const errorEl = document.getElementById("authError");
 const authButton = document.getElementById("authPrimaryButton");
 const authForm = document.querySelector(".auth-form");
+const offlineModeButton = document.getElementById("offlineModeButton");
+
+const OFFLINE_MODE_KEY = "bmarks.offlineMode";
 
 async function ensureNoActiveSession() {
   const {
@@ -35,6 +38,13 @@ authForm?.addEventListener("submit", (event) => {
   event.preventDefault();
   handleGoogleAuth();
 });
+
+offlineModeButton?.addEventListener("click", handleOfflineMode);
+
+function handleOfflineMode() {
+  localStorage.setItem(OFFLINE_MODE_KEY, "true");
+  window.location.replace("/");
+}
 
 async function handleGoogleAuth() {
   if (!authButton) return;
