@@ -7,11 +7,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { Link2, FileText, Palette, Image, Check, FolderOpen } from 'lucide-react'
 
 type BookmarkType = 'link' | 'text' | 'image' | 'color'
 
@@ -49,6 +50,20 @@ interface BookmarkModalProps {
   groupId: Id<"groups"> | null
   groups: Group[]
 }
+
+const typeOptions = [
+  { value: 'link' as const, label: 'Link', icon: Link2, description: 'Save a URL' },
+  { value: 'text' as const, label: 'Note', icon: FileText, description: 'Save text' },
+  { value: 'color' as const, label: 'Color', icon: Palette, description: 'Save a color' },
+  { value: 'image' as const, label: 'Image', icon: Image, description: 'Save an image' },
+]
+
+const colors = [
+  '#ef4444', '#f97316', '#f59e0b', '#eab308',
+  '#84cc16', '#22c55e', '#10b981', '#14b8a6',
+  '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+  '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
+]
 
 export function BookmarkModal({
   isOpen,
@@ -125,94 +140,113 @@ export function BookmarkModal({
     }
   }
 
-  const colors = [
-    '#ef4444', '#f97316', '#eab308', '#22c55e',
-    '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1',
-    '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
-  ]
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md gap-0 p-0">
-        <DialogHeader className="border-b px-6 py-4">
-          <DialogTitle>{isEditing ? 'Edit Bookmark' : 'Create Bookmark'}</DialogTitle>
+      <DialogContent className="sm:max-w-lg" hideCloseButton>
+        <DialogHeader className="border-b px-6 py-5">
+          <DialogTitle className="text-lg">
+            {isEditing ? 'Edit Bookmark' : 'New Bookmark'}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="p-6 space-y-4">
+        <div className="px-6 py-5 space-y-5">
+          {/* Type Selection */}
           {!isEditing && (
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as BookmarkType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="link">Link</SelectItem>
-                  <SelectItem value="text">Note</SelectItem>
-                  <SelectItem value="color">Color</SelectItem>
-                  <SelectItem value="image">Image</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Type</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {typeOptions.map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    onClick={() => setType(value)}
+                    className={`
+                      flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all duration-200
+                      ${type === value
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-border hover:border-muted-foreground/30 hover:bg-muted/50'
+                      }
+                    `}
+                  >
+                    <div className="relative">
+                      <Icon className="h-4 w-4" />
+                      {type === value && (
+                        <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-primary rounded-full flex items-center justify-center">
+                          <Check className="h-1.5 w-1.5 text-primary-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs font-medium">{label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
+          {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title" className="text-sm font-medium">Title</Label>
             <Input
               id="title"
-              placeholder="Enter title"
+              placeholder="Enter a title..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              className="h-10"
             />
           </div>
 
+          {/* Type-specific fields */}
           {type === 'link' && (
             <div className="space-y-2">
-              <Label htmlFor="url">URL</Label>
+              <Label htmlFor="url" className="text-sm font-medium">URL</Label>
               <Input
                 id="url"
                 placeholder="https://example.com"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
+                className="h-10"
               />
             </div>
           )}
 
           {type === 'text' && (
             <div className="space-y-2">
-              <Label htmlFor="content">Content</Label>
-              <textarea
+              <Label htmlFor="content" className="text-sm font-medium">Content</Label>
+              <Textarea
                 id="content"
-                placeholder="Enter your note..."
+                placeholder="Write your note here..."
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="min-h-[120px]"
               />
             </div>
           )}
 
           {type === 'color' && (
-            <div className="space-y-2">
-              <Label>Color</Label>
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Color</Label>
               <div className="flex items-center gap-3">
                 <div
-                  className="w-10 h-10 rounded-md border border-border"
+                  className="w-12 h-12 rounded-lg border-2 border-border shadow-sm flex-shrink-0 transition-all duration-200"
                   style={{ backgroundColor: color }}
                 />
                 <Input
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
                   placeholder="#000000"
-                  className="flex-1"
+                  className="h-10 font-mono text-sm"
                 />
               </div>
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="grid grid-cols-8 gap-1.5">
                 {colors.map((c) => (
                   <button
                     key={c}
-                    className={`w-6 h-6 rounded-md transition-transform ${
-                      color === c ? 'scale-125 ring-2 ring-offset-2 ring-offset-background ring-white/50' : ''
-                    }`}
+                    className={`
+                      aspect-square rounded-md transition-all duration-200
+                      ${color === c
+                        ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-105'
+                        : 'hover:scale-105'
+                      }
+                    `}
                     style={{ backgroundColor: c }}
                     onClick={() => setColor(c)}
                   />
@@ -223,19 +257,20 @@ export function BookmarkModal({
 
           {type === 'image' && (
             <div className="space-y-2">
-              <Label htmlFor="imageUrl">Image URL</Label>
+              <Label htmlFor="imageUrl" className="text-sm font-medium">Image URL</Label>
               <Input
                 id="imageUrl"
                 placeholder="https://example.com/image.png"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
+                className="h-10"
               />
               {imageUrl && (
-                <div className="mt-2 rounded-md overflow-hidden border border-border">
+                <div className="mt-3 rounded-lg overflow-hidden border border-border bg-muted/30">
                   <img
                     src={imageUrl}
                     alt="Preview"
-                    className="max-h-40 w-full object-cover"
+                    className="max-h-32 w-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none'
                     }}
@@ -245,21 +280,25 @@ export function BookmarkModal({
             </div>
           )}
 
+          {/* Group Selection */}
           <div className="space-y-2">
-            <Label>Group</Label>
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
+              Group
+            </Label>
             <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select group" />
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Select a group" />
               </SelectTrigger>
               <SelectContent>
                 {groups.map((group) => (
                   <SelectItem key={group._id} value={group._id}>
                     <div className="flex items-center gap-2">
                       <span
-                        className="w-2 h-2 rounded-full"
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: group.color || '#6366f1' }}
                       />
-                      {group.name}
+                      <span>{group.name}</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -269,11 +308,11 @@ export function BookmarkModal({
         </div>
 
         <div className="flex items-center justify-end border-t px-6 py-4 gap-2">
-          <DialogClose asChild>
-            <Button variant="ghost">Cancel</Button>
-          </DialogClose>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={!title.trim()}>
-            {isEditing ? 'Save' : 'Create'}
+            {isEditing ? 'Save Changes' : 'Create'}
           </Button>
         </div>
       </DialogContent>

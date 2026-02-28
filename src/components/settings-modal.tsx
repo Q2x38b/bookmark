@@ -4,20 +4,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useTheme } from '@/components/theme-provider'
-import { LogOut, Moon, Sun, Monitor } from 'lucide-react'
+import { LogOut, Moon, Sun, Monitor, Check } from 'lucide-react'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -34,28 +25,42 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     onClose()
   }
 
+  const themes = [
+    { value: 'light' as const, label: 'Light', icon: Sun },
+    { value: 'dark' as const, label: 'Dark', icon: Moon },
+    { value: 'system' as const, label: 'System', icon: Monitor },
+  ]
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md gap-0 p-0">
-        <DialogHeader className="border-b px-6 py-4">
-          <DialogTitle>Settings</DialogTitle>
+      <DialogContent className="sm:max-w-md" hideCloseButton>
+        <DialogHeader className="border-b px-6 py-5">
+          <DialogTitle className="text-lg">Settings</DialogTitle>
         </DialogHeader>
 
-        <div className="p-6 space-y-6">
+        <div className="px-6 py-5 space-y-6">
           {/* Account Section */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Account</h3>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium">Account</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Manage your account settings
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 border border-border/50">
               {user?.imageUrl && (
                 <img
                   src={user.imageUrl}
                   alt={user.fullName || 'User'}
-                  className="w-10 h-10 rounded-full"
+                  className="w-12 h-12 rounded-full ring-2 ring-background"
                 />
               )}
-              <div>
-                <p className="font-medium">{user?.fullName}</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{user?.fullName}</p>
+                <p className="text-sm text-muted-foreground truncate">
                   {user?.primaryEmailAddress?.emailAddress}
                 </p>
               </div>
@@ -66,57 +71,66 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {/* Appearance Section */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Appearance</h3>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="theme">Theme</Label>
-              <Select value={theme} onValueChange={(v: "light" | "dark" | "system") => setTheme(v)}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="light">
-                    <div className="flex items-center gap-2">
-                      <Sun className="h-4 w-4" />
-                      Light
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="dark">
-                    <div className="flex items-center gap-2">
-                      <Moon className="h-4 w-4" />
-                      Dark
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="system">
-                    <div className="flex items-center gap-2">
-                      <Monitor className="h-4 w-4" />
-                      System
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            <div>
+              <h3 className="text-sm font-medium">Appearance</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Customize how Pocket looks
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              {themes.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setTheme(value)}
+                  className={`
+                    flex flex-col items-center gap-2 p-3 rounded-lg border transition-all duration-200
+                    ${theme === value
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-border hover:border-muted-foreground/30 hover:bg-muted/50'
+                    }
+                  `}
+                >
+                  <div className="relative">
+                    <Icon className="h-5 w-5" />
+                    {theme === value && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                        <Check className="h-2 w-2 text-primary-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs font-medium">{label}</span>
+                </button>
+              ))}
             </div>
           </div>
 
           <Separator />
 
-          {/* Danger Zone */}
+          {/* Sign Out */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-muted-foreground">Account Actions</h3>
+            <div>
+              <h3 className="text-sm font-medium">Session</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Sign out of your account
+              </p>
+            </div>
+
             <Button
               variant="outline"
-              className="w-full justify-start text-destructive hover:text-destructive"
+              className="w-full justify-center gap-2 h-10 text-muted-foreground hover:text-destructive hover:border-destructive/50"
               onClick={handleSignOut}
             >
-              <LogOut className="mr-2 h-4 w-4" />
+              <LogOut className="h-4 w-4" />
               Sign Out
             </Button>
           </div>
         </div>
 
         <div className="flex items-center justify-end border-t px-6 py-4">
-          <DialogClose asChild>
-            <Button variant="ghost">Close</Button>
-          </DialogClose>
+          <Button onClick={onClose} size="sm">
+            Done
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
