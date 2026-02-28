@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
-import { SignedIn, SignedOut } from '@clerk/clerk-react'
+import { SignedIn, SignedOut, AuthenticateWithRedirectCallback } from '@clerk/clerk-react'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -25,6 +25,7 @@ function App() {
           } />
           <Route path="/sign-in" element={<SignIn />} />
           <Route path="/sign-up" element={<SignUp />} />
+          <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
         </Routes>
         <Toaster />
       </TooltipProvider>
