@@ -5,10 +5,12 @@ import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { Header } from '@/components/layout/header'
 import { BookmarkBar } from '@/components/bookmark/bookmark-bar'
-import { BookmarkList } from '@/components/bookmark/bookmark-list'
+import { BookmarkList, BookmarkListSkeleton } from '@/components/bookmark/bookmark-list'
 import { BookmarkModal } from '@/components/bookmark/bookmark-modal'
 import { MultiSelectBar } from '@/components/bookmark/multi-select-bar'
 import { SettingsModal } from '@/components/settings-modal'
+import { Skeleton } from '@/components/ui/skeleton'
+import { LogoIcon } from '@/components/logo'
 
 export type BookmarkType = 'link' | 'text' | 'image' | 'color'
 
@@ -22,6 +24,55 @@ export interface Bookmark {
   color?: string
   imageUrl?: string
   createdAt: number
+}
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+      <LogoIcon className="h-10 w-10 animate-pulse-subtle" />
+      <p className="text-sm text-muted-foreground">Loading your bookmarks...</p>
+    </div>
+  )
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header skeleton */}
+      <div className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur">
+        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-6 w-6 rounded" />
+            <Skeleton className="h-4 w-px" />
+            <Skeleton className="h-8 w-32 rounded-md" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-8 w-32 rounded-md" />
+          </div>
+        </div>
+      </div>
+
+      {/* Main content skeleton */}
+      <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
+        {/* Search bar skeleton */}
+        <div className="mb-6">
+          <Skeleton className="h-14 w-full rounded-lg" />
+        </div>
+
+        {/* Bookmark list skeleton */}
+        <div className="rounded-lg border border-border overflow-hidden">
+          <div className="px-4 py-2.5 bg-muted/30 border-b border-border">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          </div>
+          <BookmarkListSkeleton />
+        </div>
+      </main>
+    </div>
+  )
 }
 
 export default function Dashboard() {
@@ -84,6 +135,7 @@ export default function Dashboard() {
   )
 
   const displayedBookmarks = searchQuery ? searchResults : bookmarks
+  const isLoadingBookmarks = displayedBookmarks === undefined && currentGroupId !== null
 
   const toggleBookmarkSelection = useCallback((id: Id<"bookmarks">) => {
     setSelectedBookmarks(prev => {
@@ -111,12 +163,14 @@ export default function Dashboard() {
     }
   }, [displayedBookmarks])
 
+  // Show loading screen while Clerk is loading
   if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
-    )
+    return <LoadingScreen />
+  }
+
+  // Show skeleton while initial data is loading
+  if (!currentUser || groups === undefined) {
+    return <DashboardSkeleton />
   }
 
   return (
@@ -124,12 +178,15 @@ export default function Dashboard() {
       <Header
         groups={groups || []}
         currentGroupId={currentGroupId}
-        onGroupChange={setCurrentGroupId}
+        onGroupChange={(groupId) => {
+          setCurrentGroupId(groupId)
+          setSearchQuery('')
+        }}
         userId={currentUser?._id}
         onSettingsOpen={() => setIsSettingsOpen(true)}
       />
 
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
+      <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl animate-fade-in">
         <BookmarkBar
           userId={currentUser?._id}
           groupId={currentGroupId}
@@ -151,7 +208,16 @@ export default function Dashboard() {
           onRename={setRenamingBookmarkId}
           onRenameComplete={() => setRenamingBookmarkId(null)}
           groups={groups || []}
+          isLoading={isLoadingBookmarks}
         />
+
+        {searchQuery && displayedBookmarks && displayedBookmarks.length > 0 && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              Found {displayedBookmarks.length} result{displayedBookmarks.length !== 1 ? 's' : ''} for "{searchQuery}"
+            </p>
+          </div>
+        )}
       </main>
 
       {isSelectionMode && selectedBookmarks.size > 0 && (

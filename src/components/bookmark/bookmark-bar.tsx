@@ -2,8 +2,15 @@ import { useState, useRef, useEffect } from 'react'
 import { useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
-import { Plus, Command } from 'lucide-react'
+import { Plus, Command, Search, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 interface BookmarkBarProps {
   userId?: Id<"users">
@@ -33,19 +40,12 @@ function isImageUrl(text: string): boolean {
 
 async function fetchMetadata(url: string): Promise<{ title: string; favicon: string }> {
   try {
-    // Ensure URL has protocol
     const fullUrl = url.startsWith('http') ? url : `https://${url}`
     const urlObj = new URL(fullUrl)
     const domain = urlObj.hostname
-
-    // Use a simple title extraction - just use the domain for now
-    // In production, you'd want a server-side metadata fetcher
     const title = domain.replace(/^www\./, '').split('.')[0]
     const capitalizedTitle = title.charAt(0).toUpperCase() + title.slice(1)
-
-    // Get favicon
     const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
-
     return { title: capitalizedTitle, favicon }
   } catch {
     return { title: url, favicon: '' }
@@ -60,6 +60,7 @@ export function BookmarkBar({
 }: BookmarkBarProps) {
   const [inputValue, setInputValue] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const createBookmark = useMutation(api.bookmarks.createBookmark)
@@ -79,7 +80,6 @@ export function BookmarkBar({
 
   const handleInputChange = (value: string) => {
     setInputValue(value)
-    // Only search if there are bookmarks to search through
     onSearch(value)
   }
 
@@ -88,7 +88,6 @@ export function BookmarkBar({
 
     if (!userId || !groupId || !pastedText) return
 
-    // Check if it's a quick-create scenario
     if (isUrl(pastedText) || isColorCode(pastedText)) {
       e.preventDefault()
       setIsProcessing(true)
@@ -174,7 +173,6 @@ export function BookmarkBar({
           })
           toast.success('Link saved')
         } else {
-          // Plain text
           await createBookmark({
             userId,
             groupId,
@@ -204,33 +202,67 @@ export function BookmarkBar({
 
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-background hover:border-foreground/20 focus-within:border-foreground/20 focus-within:shadow-sm transition-all duration-150">
-        <button
-          onClick={onCreateClick}
-          className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors duration-150"
-          disabled={isProcessing}
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={(e) => handleInputChange(e.target.value)}
-          onPaste={handlePaste}
-          onKeyDown={handleKeyDown}
-          placeholder="Insert a link, color, or just plain text..."
-          className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
-          disabled={isProcessing || !userId || !groupId}
-        />
-        <div className="hidden sm:flex items-center gap-1 text-muted-foreground flex-shrink-0">
-          <kbd className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-muted font-mono text-[11px]">
-            <Command className="h-3 w-3" />
-          </kbd>
-          <kbd className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-muted font-mono text-[11px]">
-            F
-          </kbd>
+      <div
+        className={cn(
+          "flex items-center gap-3 px-4 py-3 rounded-lg border bg-background transition-all duration-200",
+          isFocused
+            ? "border-ring ring-2 ring-ring/20 shadow-sm"
+            : "border-border hover:border-muted-foreground/30"
+        )}
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={onCreateClick}
+              disabled={isProcessing || !userId || !groupId}
+            >
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>Create bookmark</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <div className="flex-1 flex items-center gap-2">
+          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onPaste={handlePaste}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder="Search or paste a link, color code, or text..."
+            className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+            disabled={isProcessing || !userId || !groupId}
+          />
         </div>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="hidden sm:flex items-center gap-1 text-muted-foreground shrink-0">
+              <kbd className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-muted border border-border font-mono text-[10px]">
+                <Command className="h-3 w-3" />
+              </kbd>
+              <kbd className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-muted border border-border font-mono text-[10px]">
+                F
+              </kbd>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>Focus search</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )
