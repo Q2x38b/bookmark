@@ -188,100 +188,101 @@ export function BookmarkList({
 
   if (bookmarks.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p>No bookmarks yet</p>
-        <p className="text-sm mt-1">Paste a link or type something to get started</p>
+      <div className="text-center py-16 text-muted-foreground">
+        <p className="text-sm">No bookmarks yet</p>
+        <p className="text-sm mt-1 text-muted-foreground/70">Paste a link or type something to get started</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-1">
+    <div>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground border-b border-border/50">
+      <div className="flex items-center justify-between px-4 py-2.5 text-xs font-medium text-muted-foreground border-b border-border">
         <span>Title</span>
         <span>Created At</span>
       </div>
 
       {/* Bookmarks */}
-      {bookmarks.map((bookmark) => {
-        const isRenaming = renamingBookmarkId === bookmark._id
-        const isSelected = selectedBookmarks.has(bookmark._id)
-        const isDimmed = renamingBookmarkId && !isRenaming
+      <div className="divide-y divide-border">
+        {bookmarks.map((bookmark) => {
+          const isRenaming = renamingBookmarkId === bookmark._id
+          const isSelected = selectedBookmarks.has(bookmark._id)
+          const isDimmed = renamingBookmarkId && !isRenaming
 
-        return (
-          <ContextMenu key={bookmark._id}>
-            <ContextMenuTrigger>
-              <div
-                className={cn(
-                  "group flex items-center justify-between px-4 py-3 rounded-md hover:bg-accent/50 transition-all cursor-pointer",
-                  isSelected && "bg-accent",
-                  isDimmed && "opacity-30",
-                  isRenaming && "bg-accent ring-1 ring-ring"
-                )}
-                onClick={() => {
-                  if (isSelectionMode) {
-                    onToggleSelection(bookmark._id)
-                  } else if (bookmark.type === 'link' && bookmark.url) {
-                    handleOpenLink(bookmark.url)
-                  }
-                }}
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {isSelectionMode && (
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => onToggleSelection(bookmark._id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+          return (
+            <ContextMenu key={bookmark._id}>
+              <ContextMenuTrigger>
+                <div
+                  className={cn(
+                    "group flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors duration-150 cursor-pointer",
+                    isSelected && "bg-muted",
+                    isDimmed && "opacity-30",
+                    isRenaming && "bg-muted"
                   )}
-
-                  {getBookmarkIcon(bookmark)}
-
-                  <div className="flex-1 min-w-0">
-                    {isRenaming ? (
-                      <Input
-                        autoFocus
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onBlur={() => handleRenameSubmit(bookmark._id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleRenameSubmit(bookmark._id)
-                          }
-                          if (e.key === 'Escape') {
-                            onRenameComplete()
-                          }
-                        }}
-                        className="h-7 py-0 px-2"
+                  onClick={() => {
+                    if (isSelectionMode) {
+                      onToggleSelection(bookmark._id)
+                    } else if (bookmark.type === 'link' && bookmark.url) {
+                      handleOpenLink(bookmark.url)
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {isSelectionMode && (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => onToggleSelection(bookmark._id)}
                         onClick={(e) => e.stopPropagation()}
                       />
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{bookmark.title}</span>
-                        {getSubtitle(bookmark) && (
-                          <span className="text-sm text-muted-foreground truncate">
-                            {getSubtitle(bookmark)}
-                          </span>
-                        )}
+                    )}
+
+                    {getBookmarkIcon(bookmark)}
+
+                    <div className="flex-1 min-w-0">
+                      {isRenaming ? (
+                        <Input
+                          autoFocus
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onBlur={() => handleRenameSubmit(bookmark._id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleRenameSubmit(bookmark._id)
+                            }
+                            if (e.key === 'Escape') {
+                              onRenameComplete()
+                            }
+                          }}
+                          className="h-7 py-0 px-2 text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-sm font-medium truncate">{bookmark.title}</span>
+                          {getSubtitle(bookmark) && (
+                            <span className="text-sm text-muted-foreground truncate">
+                              {getSubtitle(bookmark)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {isRenaming ? (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <kbd className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-muted font-mono text-[11px]">Enter</kbd>
                       </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        {format(new Date(bookmark.createdAt), 'MMM d')}
+                      </span>
                     )}
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  {isRenaming ? (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">Enter</kbd>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      {format(new Date(bookmark.createdAt), 'MMM d')}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </ContextMenuTrigger>
+              </ContextMenuTrigger>
 
             <ContextMenuContent className="w-48">
               {bookmark.type === 'link' && bookmark.url && (
@@ -356,7 +357,8 @@ export function BookmarkList({
             </ContextMenuContent>
           </ContextMenu>
         )
-      })}
+        })}
+      </div>
     </div>
   )
 }

@@ -7,6 +7,7 @@ import Landing from '@/pages/Landing'
 import SignIn from '@/pages/SignIn'
 import SignUp from '@/pages/SignUp'
 import Dashboard from '@/pages/Dashboard'
+import AddBookmark from '@/pages/AddBookmark'
 import NotFound from '@/pages/NotFound'
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           <Route path="/sign-in" element={<SignIn />} />
           <Route path="/sign-up" element={<SignUp />} />
           <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback />} />
+          <Route path="/add" element={<AddBookmark />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />

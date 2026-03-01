@@ -203,33 +203,33 @@ export function BookmarkBar({
   }
 
   return (
-    <div className="mb-8">
-      <div className="relative flex items-center">
-        <div className="flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-background hover:border-border/80 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring transition-colors">
-          <button
-            onClick={onCreateClick}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            disabled={isProcessing}
-          >
-            <Plus className="h-5 w-5" />
-          </button>
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onPaste={handlePaste}
-            onKeyDown={handleKeyDown}
-            placeholder="Insert a link, color, or just plain text..."
-            className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
-            disabled={isProcessing || !userId || !groupId}
-          />
-          <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
-            <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">
-              <Command className="h-3 w-3 inline" />
-            </kbd>
-            <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono">F</kbd>
-          </div>
+    <div className="mb-6">
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-background hover:border-foreground/20 focus-within:border-foreground/20 focus-within:shadow-sm transition-all duration-150">
+        <button
+          onClick={onCreateClick}
+          className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors duration-150"
+          disabled={isProcessing}
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onPaste={handlePaste}
+          onKeyDown={handleKeyDown}
+          placeholder="Insert a link, color, or just plain text..."
+          className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+          disabled={isProcessing || !userId || !groupId}
+        />
+        <div className="hidden sm:flex items-center gap-1 text-muted-foreground flex-shrink-0">
+          <kbd className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-muted font-mono text-[11px]">
+            <Command className="h-3 w-3" />
+          </kbd>
+          <kbd className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-muted font-mono text-[11px]">
+            F
+          </kbd>
         </div>
       </div>
     </div>

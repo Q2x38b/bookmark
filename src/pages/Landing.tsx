@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Logo } from '@/components/logo'
+import { LogoIcon } from '@/components/logo'
 import { ArrowRight } from 'lucide-react'
 
 export default function Landing() {
@@ -8,8 +8,8 @@ export default function Landing() {
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-10">
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <Logo />
+        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+          <LogoIcon className="h-6 w-6" />
           <div className="flex items-center gap-3">
             <Link to="/sign-in">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">

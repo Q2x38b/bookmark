@@ -1,14 +1,17 @@
+import { useState } from 'react'
 import { useClerk, useUser } from '@clerk/clerk-react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { useTheme } from '@/components/theme-provider'
-import { LogOut, Moon, Sun, Monitor, Check } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { LogOut, Download, Upload, Globe } from 'lucide-react'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -18,119 +21,125 @@ interface SettingsModalProps {
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { user } = useUser()
   const { signOut } = useClerk()
-  const { theme, setTheme } = useTheme()
+  const [displayName, setDisplayName] = useState(user?.fullName || '')
 
   const handleSignOut = () => {
     signOut()
     onClose()
   }
 
-  const themes = [
-    { value: 'light' as const, label: 'Light', icon: Sun },
-    { value: 'dark' as const, label: 'Dark', icon: Moon },
-    { value: 'system' as const, label: 'System', icon: Monitor },
-  ]
+  const handleSave = () => {
+    onClose()
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md" hideCloseButton>
-        <DialogHeader className="border-b px-6 py-5">
-          <DialogTitle className="text-lg">Settings</DialogTitle>
+      <DialogContent className="sm:max-w-[480px] gap-0 p-0">
+        <DialogHeader className="px-6 pt-6 pb-4">
+          <DialogTitle className="text-lg font-semibold">Settings</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Manage your account settings.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 py-5 space-y-6">
-          {/* Account Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium">Account</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Manage your account settings
-                </p>
-              </div>
-            </div>
+        <div className="px-6 pb-6">
+          <Tabs defaultValue="general" className="w-full">
+            <TabsList className="w-auto">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="profile">Public Profile</TabsTrigger>
+            </TabsList>
 
-            <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 border border-border/50">
-              {user?.imageUrl && (
-                <img
-                  src={user.imageUrl}
-                  alt={user.fullName || 'User'}
-                  className="w-12 h-12 rounded-full ring-2 ring-background"
+            <TabsContent value="general" className="space-y-6 mt-6">
+              {/* Profile Picture */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Profile Picture</Label>
+                <div className="flex items-center gap-4">
+                  {user?.imageUrl && (
+                    <img
+                      src={user.imageUrl}
+                      alt={user.fullName || 'User'}
+                      className="h-12 w-12 rounded-full object-cover"
+                    />
+                  )}
+                  <Button variant="outline" size="sm" className="text-sm">
+                    Upload a photo
+                  </Button>
+                </div>
+              </div>
+
+              {/* Name */}
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium">Name</Label>
+                <Input
+                  id="name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="h-10"
                 />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{user?.fullName}</p>
-                <p className="text-sm text-muted-foreground truncate">
-                  {user?.primaryEmailAddress?.emailAddress}
-                </p>
               </div>
-            </div>
-          </div>
 
-          <Separator />
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                <Input
+                  id="email"
+                  value={user?.primaryEmailAddress?.emailAddress || ''}
+                  disabled
+                  className="h-10 bg-muted/50 text-muted-foreground"
+                />
+              </div>
 
-          {/* Appearance Section */}
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium">Appearance</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Customize how Pocket looks
-              </p>
-            </div>
+              {/* Chrome Extension */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Chrome Extension</Label>
+                <Button variant="outline" className="w-full justify-start gap-3 h-10">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <span>Get the Chrome Extension</span>
+                </Button>
+              </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              {themes.map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => setTheme(value)}
-                  className={`
-                    flex flex-col items-center gap-2 p-3 rounded-lg border transition-all duration-200
-                    ${theme === value
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-border hover:border-muted-foreground/30 hover:bg-muted/50'
-                    }
-                  `}
-                >
-                  <div className="relative">
-                    <Icon className="h-5 w-5" />
-                    {theme === value && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
-                        <Check className="h-2 w-2 text-primary-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-xs font-medium">{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+              {/* Data */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Data</Label>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 gap-2 h-10">
+                    <Upload className="h-4 w-4" />
+                    Export Bookmarks
+                  </Button>
+                  <Button variant="outline" className="flex-1 gap-2 h-10">
+                    <Download className="h-4 w-4" />
+                    Import Browser Bookmarks
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
 
-          <Separator />
-
-          {/* Sign Out */}
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium">Session</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Sign out of your account
-              </p>
-            </div>
-
-            <Button
-              variant="outline"
-              className="w-full justify-center gap-2 h-10 text-muted-foreground hover:text-destructive hover:border-destructive/50"
-              onClick={handleSignOut}
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </Button>
-          </div>
+            <TabsContent value="profile" className="space-y-6 mt-6">
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">Public profile settings coming soon.</p>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
-        <div className="flex items-center justify-end border-t px-6 py-4">
-          <Button onClick={onClose} size="sm">
-            Done
+        <div className="flex items-center justify-between border-t px-6 py-4 bg-muted/30">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSignOut}
+            className="gap-2 text-muted-foreground hover:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
           </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSave}>
+              Save
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

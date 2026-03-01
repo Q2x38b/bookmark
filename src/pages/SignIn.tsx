@@ -1,5 +1,5 @@
 import { useSignIn } from '@clerk/clerk-react'
-import { Logo, LogoIcon } from '@/components/logo'
+import { LogoIcon } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Link } from 'react-router-dom'
@@ -71,7 +71,7 @@ export default function SignIn() {
         {/* Footer link */}
         <div className="text-center">
           <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <Logo className="scale-75 origin-center" />
+            <LogoIcon className="h-5 w-5 opacity-50" />
           </Link>
         </div>
       </div>
