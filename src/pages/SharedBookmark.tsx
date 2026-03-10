@@ -19,8 +19,8 @@ import {
 import { Logo } from "@/components/Logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
+import { useState, useEffect, useRef } from "react"
 
 export default function SharedBookmark() {
   const { shareId } = useParams<{ shareId: string }>()
@@ -417,208 +417,93 @@ export default function SharedBookmark() {
     }
   }
 
-  const renderContent = () => {
+  const getTypeLabel = () => {
     switch (finalBookmark.type) {
-      case "link":
-        return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground break-all">
-              {finalBookmark.content}
-            </p>
-            <div className="flex gap-2">
-              <Button onClick={handleOpen} className="flex-1 gap-2">
-                <ExternalLink className="h-4 w-4" />
-                Open Link
-              </Button>
-              <Button variant="outline" onClick={handleCopy} className="gap-2">
-                <div
-                  className={cn(
-                    "transition-[transform,opacity] duration-200 ease-out",
-                    copied ? "scale-100 opacity-100" : "scale-0 opacity-0"
-                  )}
-                >
-                  <Check className="h-4 w-4" />
-                </div>
-                <div
-                  className={cn(
-                    "absolute transition-[transform,opacity] duration-200 ease-out",
-                    copied ? "scale-0 opacity-0" : "scale-100 opacity-100"
-                  )}
-                >
-                  <Copy className="h-4 w-4" />
-                </div>
-              </Button>
-            </div>
-          </div>
-        )
-
-      case "color":
-        return (
-          <div className="space-y-4">
-            <div
-              className="h-32 w-full rounded-xl"
-              style={{ backgroundColor: finalBookmark.content }}
-            />
-            <div className="flex items-center justify-between rounded-lg border border-[#262626] bg-[#141414] p-3">
-              <code className="text-sm font-mono">{finalBookmark.content}</code>
-              <Button variant="ghost" size="sm" onClick={handleCopy} className="gap-2 h-8">
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Copy
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        )
-
-      case "note":
-        return (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-[#262626] bg-[#141414] p-4">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">{finalBookmark.content}</p>
-            </div>
-            <Button variant="outline" onClick={handleCopy} className="w-full gap-2">
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  Copy Text
-                </>
-              )}
-            </Button>
-          </div>
-        )
-
-      case "image":
-        return (
-          <div className="space-y-4">
-            {finalBookmark.fileUrl && (
-              <div className="rounded-xl overflow-hidden border border-[#262626]">
-                <img
-                  src={finalBookmark.fileUrl}
-                  alt={finalBookmark.title}
-                  className="max-h-80 w-full object-contain bg-[#0a0a0a]"
-                />
-              </div>
-            )}
-            <div className="flex gap-2">
-              {finalBookmark.fileUrl && (
-                <Button onClick={handleOpen} className="flex-1 gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  Full Size
-                </Button>
-              )}
-              <Button variant="outline" onClick={handleCopy} className="flex-1 gap-2">
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Copy URL
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        )
-
-      case "file":
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-xl border border-[#262626] bg-[#141414] p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                <File className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {finalBookmark.metadata?.fileName || "File"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Click to download
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {finalBookmark.fileUrl && (
-                <Button onClick={handleOpen} className="flex-1 gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  Download
-                </Button>
-              )}
-              <Button variant="outline" onClick={handleCopy} className="flex-1 gap-2">
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Copy URL
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        )
-
-      default:
-        return null
+      case "link": return "Link"
+      case "color": return "Color"
+      case "note": return "Text"
+      case "image": return "Image"
+      case "file": return "File"
+      default: return "Bookmark"
     }
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a0a] px-4 py-12">
+    <div className="min-h-full flex flex-col items-center justify-center bg-[#0a0a0a] px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className="w-full max-w-sm"
       >
-        {/* Card */}
-        <div className="rounded-2xl border border-[#262626] bg-[#141414] p-6">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a1a1a]">
+        {/* Simple Card */}
+        <div className="rounded-2xl border border-[#1f1f1f] bg-[#141414] p-5">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1a1a1a]">
               {getIcon()}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-medium text-white truncate">
+              <h1 className="text-[15px] font-medium text-white truncate">
                 {finalBookmark.title}
               </h1>
-              <p className="text-xs text-muted-foreground capitalize">
-                {finalBookmark.type}
+              <p className="text-[13px] text-muted-foreground">
+                {getTypeLabel()}
               </p>
             </div>
           </div>
-
-          {/* Content */}
-          {renderContent()}
         </div>
 
-        {/* Footer */}
-        <div className="mt-6 text-center">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-white transition-colors"
+        {/* Action Buttons */}
+        <div className="mt-4 flex gap-2">
+          {(finalBookmark.type === "link" || finalBookmark.fileUrl) && (
+            <Button
+              onClick={handleOpen}
+              className="flex-1 h-11 gap-2 bg-white text-black hover:bg-white/90"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {finalBookmark.type === "link" ? "Open" : "Download"}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={handleCopy}
+            className="flex-1 h-11 gap-2 border-[#262626] bg-[#141414] hover:bg-[#1a1a1a]"
           >
-            <span>Shared via</span>
-            <Logo size={14} />
-            <span>Noira</span>
-          </Link>
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? "Copied" : "Copy"}
+          </Button>
+        </div>
+
+        {/* Preview for certain types */}
+        {finalBookmark.type === "color" && (
+          <div
+            className="mt-4 h-20 w-full rounded-xl"
+            style={{ backgroundColor: finalBookmark.content }}
+          />
+        )}
+
+        {finalBookmark.type === "image" && finalBookmark.fileUrl && (
+          <div className="mt-4 rounded-xl overflow-hidden border border-[#1f1f1f]">
+            <img
+              src={finalBookmark.fileUrl}
+              alt={finalBookmark.title}
+              className="max-h-48 w-full object-contain bg-[#0a0a0a]"
+            />
+          </div>
+        )}
+
+        {finalBookmark.type === "note" && (
+          <div className="mt-4 rounded-xl border border-[#1f1f1f] bg-[#141414] p-4">
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
+              {finalBookmark.content}
+            </p>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="mt-6 flex items-center justify-center gap-2 text-muted-foreground">
+          <span className="text-xs">Shared via</span>
+          <Logo size={14} />
+          <span className="text-xs">Noira</span>
         </div>
       </motion.div>
     </div>

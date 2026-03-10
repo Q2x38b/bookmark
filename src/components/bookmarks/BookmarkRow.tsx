@@ -19,6 +19,7 @@ import {
   Globe,
   Eye,
   EyeOff,
+  MoreVertical,
 } from "lucide-react"
 import {
   ContextMenu,
@@ -334,9 +335,9 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
           <button
             onClick={handleCopy}
             aria-label="Copy to clipboard"
-            className="h-11 w-11 flex items-center justify-center rounded-full bg-emerald-500 text-white shadow-md"
+            className="h-9 w-9 flex items-center justify-center rounded-full bg-emerald-500 text-white shadow-md"
           >
-            <Copy className="h-5 w-5" />
+            <Copy className="h-4 w-4" />
           </button>
         </motion.div>
       )}
@@ -350,9 +351,9 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
           <button
             onClick={handleDelete}
             aria-label="Delete bookmark"
-            className="h-11 w-11 flex items-center justify-center rounded-full bg-destructive text-white shadow-md"
+            className="h-9 w-9 flex items-center justify-center rounded-full bg-destructive text-white shadow-md"
           >
-            <Trash2 className="h-5 w-5" />
+            <Trash2 className="h-4 w-4" />
           </button>
         </motion.div>
       )}
@@ -452,6 +453,21 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
               </motion.span>
             )}
           </AnimatePresence>
+
+          {/* Mobile menu button */}
+          {isMobile && !isSelectMode && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                haptics.soft()
+                setIsMenuOpen(true)
+              }}
+              className="p-1.5 -mr-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 active:bg-accent"
+              aria-label="More options"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </motion.div>
 

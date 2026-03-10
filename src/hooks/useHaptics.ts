@@ -1,7 +1,19 @@
 import { useCallback, useMemo } from "react"
 
-// Check if vibration is supported (only on mobile devices typically)
-const isVibrationSupported = typeof navigator !== "undefined" && "vibrate" in navigator
+// Detect iOS - all browsers on iOS use WebKit (Apple policy)
+// Chrome, Safari, Firefox on iOS are all WebKit-based
+const isIOS = typeof navigator !== "undefined" &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1))
+
+// Check if vibration is supported
+// IMPORTANT: iOS does NOT support the Vibration API in ANY browser
+// This is a WebKit/platform limitation - the API simply doesn't exist on iOS
+// Haptics will be no-ops on iOS devices (no error, just silent)
+const isVibrationSupported = typeof navigator !== "undefined" &&
+  "vibrate" in navigator &&
+  typeof navigator.vibrate === "function" &&
+  !isIOS
 
 // Haptic feedback patterns using native Vibration API
 // Pattern format: [vibrate, pause, vibrate, pause, ...] in milliseconds
