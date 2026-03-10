@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { useHaptics } from "@/hooks/useHaptics"
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors select-none focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_hsl(var(--background)),0_0_0_4px_hsl(var(--ring)/0.3)] disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]",
@@ -37,15 +38,38 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
+  haptic?: boolean
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, haptic = true, onClick, ...props }, ref) => {
+    const haptics = useHaptics()
     const Comp = asChild ? Slot : "button"
+
+    const handleClick = React.useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+      // Only trigger haptics for non-asChild buttons to avoid interfering with Link navigation
+      if (haptic && !asChild) {
+        haptics.soft()
+      }
+      onClick?.(e)
+    }, [haptic, haptics, onClick, asChild])
+
+    // When using asChild, pass through props without custom onClick to let child handle navigation
+    if (asChild) {
+      return (
+        <Comp
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          {...props}
+        />
+      )
+    }
+
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        onClick={handleClick}
         {...props}
       />
     )

@@ -302,53 +302,57 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 pb-16 pt-4">
-      <BookmarkInput
-        userId={userId}
-        groupId={groupId}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        inputRef={inputRef as React.RefObject<HTMLInputElement>}
-        onOpenCreateModal={() => setIsCreateOpen(true)}
-      />
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Sticky header section */}
+      <div className="shrink-0 bg-background px-3 pt-4 pb-2 space-y-2">
+        <BookmarkInput
+          userId={userId}
+          groupId={groupId}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          inputRef={inputRef as React.RefObject<HTMLInputElement>}
+          onOpenCreateModal={() => setIsCreateOpen(true)}
+        />
 
-      {/* Column Headers */}
-      <div className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground border-b border-border pb-1.5 mt-1">
-        <div className="flex-1 min-w-0">Title</div>
-        <div className="w-16 text-right shrink-0">Created</div>
+        {/* Column Headers */}
+        <div className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground border-b border-border pb-1.5">
+          <div className="flex-1 min-w-0">Title</div>
+          <div className="w-16 text-right shrink-0">Created</div>
+        </div>
       </div>
 
-      {/* Bookmark List */}
-      <LayoutGroup>
-        <div ref={listRef} className="space-y-0.5">
-          {bookmarks?.map((bookmark, index) => (
-            <BookmarkRow
-              key={bookmark._id}
-              bookmark={bookmark}
-              isSelected={selectedIds.has(bookmark._id)}
-              isFocused={focusedIndex === index}
-              onSelect={(selected) => {
-                setSelectedIds((prev) => {
-                  const next = new Set(prev)
-                  if (selected) {
-                    next.add(bookmark._id)
-                  } else {
-                    next.delete(bookmark._id)
-                  }
-                  return next
-                })
-              }}
-              onFocus={() => setFocusedIndex(index)}
-              groups={groups}
-              isSelectMode={isSelectMode}
-              onEnterSelectMode={handleEnterSelectMode}
-              onOpenFile={(bookmark, fileUrl) => setFilePreview({ bookmark, fileUrl })}
-            />
-          ))}
-        </div>
-      </LayoutGroup>
+      {/* Scrollable Bookmark List */}
+      <div className="flex-1 overflow-y-auto px-3 pb-16">
+        <LayoutGroup>
+          <div ref={listRef} className="space-y-0.5">
+            {bookmarks?.map((bookmark, index) => (
+              <BookmarkRow
+                key={bookmark._id}
+                bookmark={bookmark}
+                isSelected={selectedIds.has(bookmark._id)}
+                isFocused={focusedIndex === index}
+                onSelect={(selected) => {
+                  setSelectedIds((prev) => {
+                    const next = new Set(prev)
+                    if (selected) {
+                      next.add(bookmark._id)
+                    } else {
+                      next.delete(bookmark._id)
+                    }
+                    return next
+                  })
+                }}
+                onFocus={() => setFocusedIndex(index)}
+                groups={groups}
+                isSelectMode={isSelectMode}
+                onEnterSelectMode={handleEnterSelectMode}
+                onOpenFile={(bookmark, fileUrl) => setFilePreview({ bookmark, fileUrl })}
+              />
+            ))}
+          </div>
+        </LayoutGroup>
 
-      {bookmarks?.length === 0 && (
+        {bookmarks?.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-muted/30 border border-border/30 mb-3">
             {searchQuery ? (
@@ -390,7 +394,8 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
               : "Add a link, note, or color to get started"}
           </p>
         </div>
-      )}
+        )}
+      </div>
 
       {/* Bottom Selection Bar - Mobile-friendly with horizontal scroll */}
       <AnimatePresence>

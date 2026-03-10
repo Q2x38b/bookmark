@@ -15,7 +15,7 @@ export default function SSOCallback() {
           afterSignUpUrl: "/",
         })
       } catch {
-        navigate("/sign-in")
+        navigate("/signin")
       }
     }
 

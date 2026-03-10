@@ -95,17 +95,17 @@ export function ProfileDropdown({ userId, userTheme, onOpenShortcuts }: ProfileD
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 p-1 origin-top-right">
           <div className="flex items-center gap-2 px-2 py-1.5">
-            <Avatar className="h-6 w-6">
+            <Avatar className="h-6 w-6 shrink-0">
               <AvatarImage src={user.imageUrl} alt={user.fullName || "User"} />
               <AvatarFallback className="text-xs">
                 {user.firstName?.[0] || user.emailAddresses[0]?.emailAddress[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="flex flex-col">
-              <span className="text-[13px] font-medium leading-tight">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[13px] font-medium leading-tight no-underline decoration-transparent truncate">
                 {user.fullName || user.firstName || "User"}
               </span>
-              <span className="text-[11px] text-muted-foreground leading-tight">
+              <span className="text-[11px] text-muted-foreground leading-tight truncate">
                 {user.primaryEmailAddress?.emailAddress}
               </span>
             </div>

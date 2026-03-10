@@ -2,6 +2,7 @@ import * as React from "react"
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useHaptics } from "@/hooks/useHaptics"
 
 const ContextMenu = ContextMenuPrimitive.Root
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger
@@ -75,20 +76,34 @@ const ContextMenuItem = React.forwardRef<
     inset?: boolean
     variant?: "default" | "destructive"
   }
->(({ className, inset, variant = "default", ...props }, ref) => (
-  <ContextMenuPrimitive.Item
-    ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0",
-      variant === "destructive"
-        ? "text-destructive [&>svg]:text-destructive focus:bg-destructive/15 focus:text-destructive"
-        : "focus:bg-accent",
-      inset && "pl-8",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, inset, variant = "default", onSelect, ...props }, ref) => {
+  const haptics = useHaptics()
+
+  const handleSelect = React.useCallback((event: Event) => {
+    if (variant === "destructive") {
+      haptics.warning()
+    } else {
+      haptics.soft()
+    }
+    onSelect?.(event)
+  }, [haptics, variant, onSelect])
+
+  return (
+    <ContextMenuPrimitive.Item
+      ref={ref}
+      className={cn(
+        "relative flex cursor-default select-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0",
+        variant === "destructive"
+          ? "text-destructive [&>svg]:text-destructive focus:bg-destructive/15 focus:text-destructive"
+          : "focus:bg-accent",
+        inset && "pl-8",
+        className
+      )}
+      onSelect={handleSelect}
+      {...props}
+    />
+  )
+})
 ContextMenuItem.displayName = ContextMenuPrimitive.Item.displayName
 
 const ContextMenuCheckboxItem = React.forwardRef<

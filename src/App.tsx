@@ -9,6 +9,7 @@ import SSOCallback from "./pages/SSOCallback"
 import { PublicProfile } from "./pages/PublicProfile"
 import NotFound from "./pages/NotFound"
 import ErrorPage from "./pages/Error"
+import Unauthorized from "./pages/Unauthorized"
 
 export default function App() {
   return (
@@ -26,9 +27,10 @@ export default function App() {
           </>
         }
       />
-      <Route path="/sign-in" element={<SignIn />} />
-      <Route path="/sign-up" element={<SignUp />} />
+      <Route path="/signin" element={<SignIn />} />
+      <Route path="/signup" element={<SignUp />} />
       <Route path="/sso-callback" element={<SSOCallback />} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/share/:shareId" element={<SharedBookmark />} />
       <Route path="/u/:username" element={<PublicProfile />} />
       <Route path="/error" element={<ErrorPage />} />

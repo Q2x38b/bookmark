@@ -41,8 +41,7 @@
     "react-router-dom": "^7.1.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.1",
-    "tailwindcss-animate": "^1.0.7",
-    "web-haptics": "^0.0.6"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

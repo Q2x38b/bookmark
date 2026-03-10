@@ -60,9 +60,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 flex h-12 items-center justify-between bg-background/95 backdrop-blur px-4">
+      <header className="shrink-0 flex h-12 items-center justify-between bg-background px-4">
         <div className="flex items-center gap-2">
           <Logo size={22} />
           <span className="text-muted-foreground/60">/</span>
@@ -79,8 +79,8 @@ export default function Dashboard() {
         />
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-3xl px-3 py-4">
+      {/* Main Content - scrollable area */}
+      <main className="flex-1 overflow-hidden">
         <BookmarkList
           userId={userId}
           groupId={currentGroupId}

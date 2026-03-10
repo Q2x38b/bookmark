@@ -19,7 +19,6 @@ import {
   Globe,
   Eye,
   EyeOff,
-  MoreVertical,
 } from "lucide-react"
 import {
   ContextMenu,
@@ -61,9 +60,9 @@ const isTouchDevice = () => {
   return hasTouch || isNarrowViewport
 }
 
-// Swipe action width
-const ACTION_WIDTH = 72
-const SNAP_THRESHOLD = 40
+// Swipe action width - circular buttons
+const ACTION_WIDTH = 64
+const SNAP_THRESHOLD = 55 // Higher = harder to trigger, easier to snap back
 
 export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function BookmarkRow({
   bookmark,
@@ -292,24 +291,18 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
     toast.success(bookmark.isPublic ? "Removed from public profile" : "Added to public profile")
   }
 
-  const handleOpenMenu = () => {
-    haptics.rigid()
-    setIsMenuOpen(true)
-    controls.start({ x: 0 })
-    setIsSwiped(null)
-  }
-
   // Handle drag end
   const handleDragEnd = useCallback((_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
     const { offset, velocity } = info
     const swipeThreshold = SNAP_THRESHOLD
 
-    if (offset.x < -swipeThreshold || velocity.x < -500) {
-      // Swiped left - show right actions (delete, menu)
-      controls.start({ x: -ACTION_WIDTH * 2 })
+    // Require higher velocity (700) to trigger swipe, making it easier to snap back
+    if (offset.x < -swipeThreshold || velocity.x < -700) {
+      // Swiped left - show right action (delete)
+      controls.start({ x: -ACTION_WIDTH })
       setIsSwiped("left")
       haptics.nudge()
-    } else if (offset.x > swipeThreshold || velocity.x > 500) {
+    } else if (offset.x > swipeThreshold || velocity.x > 700) {
       // Swiped right - show left action (copy)
       controls.start({ x: ACTION_WIDTH })
       setIsSwiped("right")
@@ -325,7 +318,7 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
 
   // Transform for action button opacity
   const leftActionOpacity = useTransform(x, [0, ACTION_WIDTH], [0, 1])
-  const rightActionOpacity = useTransform(x, [-ACTION_WIDTH * 2, 0], [1, 0])
+  const rightActionOpacity = useTransform(x, [-ACTION_WIDTH, 0], [1, 0])
 
   const rowContent = (
     <div
@@ -335,36 +328,29 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
       {/* Left action (shown when swiping right) - Copy */}
       {isMobile && (
         <motion.div
-          className="absolute inset-y-0 left-0 flex items-center"
+          className="absolute inset-y-0 left-0 flex items-center justify-center"
           style={{ opacity: leftActionOpacity, width: ACTION_WIDTH }}
         >
           <button
             onClick={handleCopy}
             aria-label="Copy to clipboard"
-            className="h-full w-full flex items-center justify-center bg-emerald-500 text-white"
+            className="h-11 w-11 flex items-center justify-center rounded-full bg-emerald-500 text-white shadow-md"
           >
             <Copy className="h-5 w-5" />
           </button>
         </motion.div>
       )}
 
-      {/* Right actions (shown when swiping left) - Menu, Delete */}
+      {/* Right action (shown when swiping left) - Delete */}
       {isMobile && (
         <motion.div
-          className="absolute inset-y-0 right-0 flex items-center"
-          style={{ opacity: rightActionOpacity, width: ACTION_WIDTH * 2 }}
+          className="absolute inset-y-0 right-0 flex items-center justify-center"
+          style={{ opacity: rightActionOpacity, width: ACTION_WIDTH }}
         >
-          <button
-            onClick={handleOpenMenu}
-            aria-label="More options"
-            className="h-full flex-1 flex items-center justify-center bg-muted text-muted-foreground"
-          >
-            <MoreVertical className="h-5 w-5" />
-          </button>
           <button
             onClick={handleDelete}
             aria-label="Delete bookmark"
-            className="h-full flex-1 flex items-center justify-center bg-destructive text-white"
+            className="h-11 w-11 flex items-center justify-center rounded-full bg-destructive text-white shadow-md"
           >
             <Trash2 className="h-5 w-5" />
           </button>
@@ -375,8 +361,8 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
       <motion.div
         drag={isMobile && !isSelectMode ? "x" : false}
         dragDirectionLock
-        dragElastic={0.1}
-        dragConstraints={{ left: -ACTION_WIDTH * 2, right: ACTION_WIDTH }}
+        dragElastic={0.05}
+        dragConstraints={{ left: -ACTION_WIDTH, right: ACTION_WIDTH }}
         onDragEnd={handleDragEnd}
         animate={controls}
         style={{ x }}

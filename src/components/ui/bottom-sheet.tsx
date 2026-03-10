@@ -1,6 +1,7 @@
 import * as React from "react"
 import { motion, AnimatePresence, PanInfo } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { useHaptics } from "@/hooks/useHaptics"
 
 interface BottomSheetProps {
   open: boolean
@@ -114,9 +115,20 @@ export function BottomSheetItem({
   disabled = false,
   className
 }: BottomSheetItemProps) {
+  const haptics = useHaptics()
+
+  const handleClick = () => {
+    if (variant === "destructive") {
+      haptics.warning()
+    } else {
+      haptics.soft()
+    }
+    onClick?.()
+  }
+
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled}
       className={cn(
         "flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-[15px] font-medium transition-colors active:bg-accent/50 touch-target no-select",

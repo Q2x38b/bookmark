@@ -36,7 +36,7 @@ export default function Landing() {
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-4">
         <Logo size={28} />
-        <Link to="/sign-in">
+        <Link to="/signin">
           <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-white">
             Sign in
           </Button>
@@ -68,7 +68,7 @@ export default function Landing() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <Link to="/sign-up">
+          <Link to="/signup">
             <Button
               size="lg"
               className="mt-10 h-12 px-8 text-base bg-white text-black hover:bg-white/90"
