@@ -301,13 +301,6 @@ export function Onboarding({ isNewUser = false }: OnboardingProps) {
       <div className="relative w-64 rounded-2xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden">
         {/* Content with slide animation */}
         <div className="p-3 overflow-hidden">
-          {/* Close button - inside content area */}
-          <button
-            onClick={handleDismiss}
-            className="absolute top-1.5 right-1.5 z-10 p-1 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 transition-all"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={currentTip}
@@ -322,8 +315,15 @@ export function Onboarding({ isNewUser = false }: OnboardingProps) {
               }}
             >
               {/* Mockup illustration */}
-              <div className="mb-3">
+              <div className="relative mb-3">
                 {tip.mockup}
+                {/* Close button - top right of mockup */}
+                <button
+                  onClick={handleDismiss}
+                  className="absolute -top-1 -right-1 z-10 p-1 rounded-full text-muted-foreground/40 hover:text-foreground transition-all"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
 
               {/* Text content */}
