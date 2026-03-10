@@ -61,8 +61,8 @@ const isTouchDevice = () => {
   return hasTouch || isNarrowViewport
 }
 
-// Swipe action width - circular buttons
-const ACTION_WIDTH = 64
+// Swipe action width - now contains two buttons
+const ACTION_WIDTH = 100
 const SNAP_THRESHOLD = 55 // Higher = harder to trigger, easier to snap back
 
 export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function BookmarkRow({
@@ -326,10 +326,10 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
       ref={containerRef}
       className="relative overflow-hidden rounded-md"
     >
-      {/* Left action (shown when swiping right) - Copy */}
+      {/* Left action (shown when swiping right) - Copy + More */}
       {isMobile && (
         <motion.div
-          className="absolute inset-y-0 left-0 flex items-center justify-center"
+          className="absolute inset-y-0 left-0 flex items-center justify-center gap-2 px-2"
           style={{ opacity: leftActionOpacity, width: ACTION_WIDTH }}
         >
           <button
@@ -338,6 +338,19 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
             className="h-9 w-9 flex items-center justify-center rounded-full bg-emerald-500 text-white shadow-md"
           >
             <Copy className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              haptics.soft()
+              controls.start({ x: 0 })
+              setIsSwiped(null)
+              setIsMenuOpen(true)
+            }}
+            aria-label="More options"
+            className="h-9 w-9 flex items-center justify-center rounded-full bg-muted-foreground text-white shadow-md"
+          >
+            <MoreVertical className="h-4 w-4" />
           </button>
         </motion.div>
       )}
@@ -454,21 +467,7 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
             )}
           </AnimatePresence>
 
-          {/* Mobile menu button */}
-          {isMobile && !isSelectMode && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                haptics.soft()
-                setIsMenuOpen(true)
-              }}
-              className="p-1.5 -mr-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 active:bg-accent"
-              aria-label="More options"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+                  </div>
       </motion.div>
 
       {/* Mobile action sheet (triggered by swipe action) */}
