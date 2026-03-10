@@ -1,26 +1,48 @@
 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    .q1 { fill: #fafafa; fill-opacity: 0.9; }
-    .q2 { fill: #fafafa; fill-opacity: 0.6; }
-    .q3 { fill: #fafafa; fill-opacity: 0.4; }
-    .q4 { fill: #fafafa; fill-opacity: 0.7; }
-    @media (prefers-color-scheme: light) {
-      .q1 { fill: #0a0a0a; fill-opacity: 0.9; }
-      .q2 { fill: #0a0a0a; fill-opacity: 0.6; }
-      .q3 { fill: #0a0a0a; fill-opacity: 0.4; }
-      .q4 { fill: #0a0a0a; fill-opacity: 0.7; }
-    }
-  </style>
   <defs>
-    <clipPath id="bookmark-clip">
+    <clipPath id="clip">
       <path d="M4 3C4 2.44772 4.44772 2 5 2H19C19.5523 2 20 2.44772 20 3V21.5C20 21.8466 19.7934 22.1598 19.4743 22.2966C19.1552 22.4334 18.7843 22.3683 18.5303 22.1303L12 16.0607L5.46967 22.1303C5.21575 22.3683 4.84479 22.4334 4.52567 22.2966C4.20656 22.1598 4 21.8466 4 21.5V3Z" />
     </clipPath>
+    <!-- Horizontal gradient - top row (dark mode) -->
+    <linearGradient id="top-dark" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fafafa" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#fafafa" stop-opacity="0.75" />
+      <stop offset="100%" stop-color="#fafafa" stop-opacity="0.6" />
+    </linearGradient>
+    <!-- Horizontal gradient - bottom row (dark mode) -->
+    <linearGradient id="bottom-dark" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fafafa" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#fafafa" stop-opacity="0.55" />
+      <stop offset="100%" stop-color="#fafafa" stop-opacity="0.7" />
+    </linearGradient>
+    <!-- Horizontal gradient - top row (light mode) -->
+    <linearGradient id="top-light" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0a0a0a" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#0a0a0a" stop-opacity="0.75" />
+      <stop offset="100%" stop-color="#0a0a0a" stop-opacity="0.6" />
+    </linearGradient>
+    <!-- Horizontal gradient - bottom row (light mode) -->
+    <linearGradient id="bottom-light" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0a0a0a" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#0a0a0a" stop-opacity="0.55" />
+      <stop offset="100%" stop-color="#0a0a0a" stop-opacity="0.7" />
+    </linearGradient>
   </defs>
-  <!-- 4-box grid pattern clipped to bookmark shape -->
-  <g clip-path="url(#bookmark-clip)">
-    <rect class="q1" x="4" y="2" width="7.5" height="9"/>
-    <rect class="q2" x="12.5" y="2" width="7.5" height="9"/>
-    <rect class="q3" x="4" y="12" width="7.5" height="11"/>
-    <rect class="q4" x="12.5" y="12" width="7.5" height="11"/>
+  <style>
+    .top { fill: url(#top-dark); }
+    .bottom { fill: url(#bottom-dark); }
+    @media (prefers-color-scheme: light) {
+      .top { fill: url(#top-light); }
+      .bottom { fill: url(#bottom-light); }
+    }
+  </style>
+  <g clip-path="url(#clip)">
+    <!-- Top half with horizontal gradient -->
+    <rect class="top" x="4" y="2" width="16" height="10"/>
+    <!-- Bottom half with horizontal gradient -->
+    <rect class="bottom" x="4" y="12" width="16" height="12"/>
+    <!-- Soft blend in the middle -->
+    <rect class="top" x="4" y="9" width="16" height="6" opacity="0.3"/>
+    <rect class="bottom" x="4" y="9" width="16" height="6" opacity="0.3"/>
   </g>
 </svg>
