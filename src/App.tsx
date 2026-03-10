@@ -9,9 +9,7 @@ const Landing = lazy(() => import("./pages/Landing"))
 const SignIn = lazy(() => import("./pages/SignIn"))
 const SignUp = lazy(() => import("./pages/SignUp"))
 const Dashboard = lazy(() => import("./pages/Dashboard"))
-const SharedBookmark = lazy(() => import("./pages/SharedBookmark"))
 const SSOCallback = lazy(() => import("./pages/SSOCallback"))
-const PublicProfile = lazy(() => import("./pages/PublicProfile").then(m => ({ default: m.PublicProfile })))
 const NotFound = lazy(() => import("./pages/NotFound"))
 const ErrorPage = lazy(() => import("./pages/Error"))
 const Unauthorized = lazy(() => import("./pages/Unauthorized"))
@@ -91,8 +89,6 @@ export default function App() {
       <Route path="/signup" element={<Suspense fallback={<AuthPageLoader />}><SignUp /></Suspense>} />
       <Route path="/sso-callback" element={<Suspense fallback={<AuthPageLoader />}><SSOCallback /></Suspense>} />
       <Route path="/unauthorized" element={<Suspense fallback={<AuthPageLoader />}><Unauthorized /></Suspense>} />
-      <Route path="/share/:shareId" element={<Suspense fallback={<PageLoader />}><SharedBookmark /></Suspense>} />
-      <Route path="/u/:username" element={<Suspense fallback={<PageLoader />}><PublicProfile /></Suspense>} />
       <Route path="/error" element={<Suspense fallback={<AuthPageLoader />}><ErrorPage /></Suspense>} />
       <Route path="*" element={<Suspense fallback={<AuthPageLoader />}><NotFound /></Suspense>} />
     </Routes>
