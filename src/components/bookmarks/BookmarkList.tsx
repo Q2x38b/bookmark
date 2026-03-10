@@ -304,7 +304,7 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Sticky header section */}
-      <div className="shrink-0 bg-background pt-4 pb-2 space-y-2 px-1">
+      <div className="shrink-0 bg-background pt-4 pb-2 space-y-2 px-2">
         <BookmarkInput
           userId={userId}
           groupId={groupId}
@@ -322,7 +322,7 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
       </div>
 
       {/* Scrollable Bookmark List */}
-      <div className="flex-1 overflow-y-auto pb-16 px-1">
+      <div className="flex-1 overflow-y-auto pb-16 px-2">
         <LayoutGroup>
           <div ref={listRef} className="space-y-0.5">
             {bookmarks?.map((bookmark, index) => (

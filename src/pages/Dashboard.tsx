@@ -62,7 +62,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Header - full width with items on edges */}
-      <header className="shrink-0 flex h-12 items-center justify-between bg-background px-4 sm:px-6">
+      <header className="shrink-0 flex h-10 items-center justify-between bg-background px-4 sm:px-6">
         <div className="flex items-center gap-2">
           <Logo size={22} />
           <span className="text-muted-foreground/60">/</span>
