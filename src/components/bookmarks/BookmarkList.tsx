@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, memo, lazy, Suspense } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id, Doc } from "../../../convex/_generated/dataModel"
@@ -19,12 +19,26 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { ExportModal } from "@/components/modals/ExportModal"
-import { FilePreviewModal } from "@/components/modals/FilePreviewModal"
-import { CreateBookmarkModal } from "@/components/modals/CreateBookmarkModal"
-import { BulkShareModal } from "@/components/modals/BulkShareModal"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useHaptics } from "@/hooks/useHaptics"
+
+// Lazy load heavy modals - they're not needed until user interacts
+const ExportModal = lazy(() => import("@/components/modals/ExportModal").then(m => ({ default: m.ExportModal })))
+const FilePreviewModal = lazy(() => import("@/components/modals/FilePreviewModal").then(m => ({ default: m.FilePreviewModal })))
+const CreateBookmarkModal = lazy(() => import("@/components/modals/CreateBookmarkModal").then(m => ({ default: m.CreateBookmarkModal })))
+const BulkShareModal = lazy(() => import("@/components/modals/BulkShareModal").then(m => ({ default: m.BulkShareModal })))
+
+// Memoized loading skeleton for bookmarks
+const BookmarkRowSkeleton = memo(function BookmarkRowSkeleton() {
+  return (
+    <div className="flex items-center gap-2 px-2.5 py-2 rounded-md">
+      <Skeleton className="h-5 w-5 rounded shrink-0" />
+      <Skeleton className="h-4 flex-1" />
+      <Skeleton className="h-3 w-12" />
+    </div>
+  )
+})
 
 interface BookmarkListProps {
   userId: Id<"users">
@@ -58,13 +72,20 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
       : { userId, groupId }
   )
 
+  // Track if we've ever loaded data (for initial skeleton)
+  const hasLoadedRef = useRef(false)
+
   // Keep previous results while loading to prevent blinking
   const bookmarks = bookmarksQuery ?? previousBookmarksRef.current
+
+  // Initial loading state - only true on first load before any data
+  const isInitialLoading = bookmarksQuery === undefined && !hasLoadedRef.current
 
   // Update ref when we get new results
   useEffect(() => {
     if (bookmarksQuery) {
       previousBookmarksRef.current = bookmarksQuery
+      hasLoadedRef.current = true
     }
   }, [bookmarksQuery])
 
@@ -325,36 +346,45 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
 
       {/* Scrollable Bookmark List */}
       <div className="flex-1 overflow-y-auto pb-16 px-3">
-        <LayoutGroup>
-          <div ref={listRef} className="space-y-0.5">
-            {bookmarks?.map((bookmark, index) => (
-              <BookmarkRow
-                key={bookmark._id}
-                bookmark={bookmark}
-                isSelected={selectedIds.has(bookmark._id)}
-                isFocused={focusedIndex === index}
-                onSelect={(selected) => {
-                  setSelectedIds((prev) => {
-                    const next = new Set(prev)
-                    if (selected) {
-                      next.add(bookmark._id)
-                    } else {
-                      next.delete(bookmark._id)
-                    }
-                    return next
-                  })
-                }}
-                onFocus={() => setFocusedIndex(index)}
-                groups={groups}
-                isSelectMode={isSelectMode}
-                onEnterSelectMode={handleEnterSelectMode}
-                onOpenFile={(bookmark, fileUrl) => setFilePreview({ bookmark, fileUrl })}
-              />
+        {isInitialLoading ? (
+          // Show skeleton on initial load
+          <div className="space-y-0.5">
+            {[...Array(8)].map((_, i) => (
+              <BookmarkRowSkeleton key={i} />
             ))}
           </div>
-        </LayoutGroup>
+        ) : (
+          <LayoutGroup>
+            <div ref={listRef} className="space-y-0.5">
+              {bookmarks?.map((bookmark, index) => (
+                <BookmarkRow
+                  key={bookmark._id}
+                  bookmark={bookmark}
+                  isSelected={selectedIds.has(bookmark._id)}
+                  isFocused={focusedIndex === index}
+                  onSelect={(selected) => {
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev)
+                      if (selected) {
+                        next.add(bookmark._id)
+                      } else {
+                        next.delete(bookmark._id)
+                      }
+                      return next
+                    })
+                  }}
+                  onFocus={() => setFocusedIndex(index)}
+                  groups={groups}
+                  isSelectMode={isSelectMode}
+                  onEnterSelectMode={handleEnterSelectMode}
+                  onOpenFile={(bookmark, fileUrl) => setFilePreview({ bookmark, fileUrl })}
+                />
+              ))}
+            </div>
+          </LayoutGroup>
+        )}
 
-        {bookmarks?.length === 0 && (
+        {!isInitialLoading && bookmarks?.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-muted/30 border border-border/30 mb-3">
             {searchQuery ? (
@@ -620,37 +650,54 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
         )}
       </AnimatePresence>
 
-      <ExportModal
-        open={isExportOpen}
-        onOpenChange={setIsExportOpen}
-        userId={userId}
-        groups={groups}
-        selectedBookmarkIds={Array.from(selectedIds)}
-      />
+      {/* Lazy load modals only when open */}
+      {isExportOpen && (
+        <Suspense fallback={null}>
+          <ExportModal
+            open={isExportOpen}
+            onOpenChange={setIsExportOpen}
+            userId={userId}
+            groups={groups}
+            selectedBookmarkIds={Array.from(selectedIds)}
+          />
+        </Suspense>
+      )}
 
-      <FilePreviewModal
-        open={!!filePreview}
-        onOpenChange={(open) => !open && setFilePreview(null)}
-        bookmark={filePreview?.bookmark || null}
-        fileUrl={filePreview?.fileUrl || null}
-      />
+      {filePreview && (
+        <Suspense fallback={null}>
+          <FilePreviewModal
+            open={!!filePreview}
+            onOpenChange={(open) => !open && setFilePreview(null)}
+            bookmark={filePreview?.bookmark || null}
+            fileUrl={filePreview?.fileUrl || null}
+          />
+        </Suspense>
+      )}
 
-      <CreateBookmarkModal
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-        userId={userId}
-        groupId={groupId}
-      />
+      {isCreateOpen && (
+        <Suspense fallback={null}>
+          <CreateBookmarkModal
+            open={isCreateOpen}
+            onOpenChange={setIsCreateOpen}
+            userId={userId}
+            groupId={groupId}
+          />
+        </Suspense>
+      )}
 
-      <BulkShareModal
-        open={isBulkShareOpen}
-        onOpenChange={setIsBulkShareOpen}
-        bookmarks={bookmarks?.filter((b) => selectedIds.has(b._id)) || []}
-        onComplete={() => {
-          setSelectedIds(new Set())
-          setIsSelectMode(false)
-        }}
-      />
+      {isBulkShareOpen && (
+        <Suspense fallback={null}>
+          <BulkShareModal
+            open={isBulkShareOpen}
+            onOpenChange={setIsBulkShareOpen}
+            bookmarks={bookmarks?.filter((b) => selectedIds.has(b._id)) || []}
+            onComplete={() => {
+              setSelectedIds(new Set())
+              setIsSelectMode(false)
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

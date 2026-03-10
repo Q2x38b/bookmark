@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+import { cn, getFileType, formatFileSize } from "@/lib/utils"
 import { useHaptics } from "@/hooks/useHaptics"
 import { useState, useEffect, useRef } from "react"
 
@@ -576,6 +576,7 @@ export default function SharedBookmark() {
             />
           )}
 
+          {/* Image preview */}
           {finalBookmark.type === "image" && finalBookmark.fileUrl && (
             <button
               onClick={() => setIsPreviewOpen(true)}
@@ -592,25 +593,102 @@ export default function SharedBookmark() {
             </button>
           )}
 
-          {finalBookmark.type === "file" && finalBookmark.fileUrl && (
-            <div className="mt-4 rounded-xl border border-[#1f1f1f] bg-[#141414] p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <File className="h-5 w-5 text-muted-foreground" />
+          {/* File preview - handle different file types */}
+          {finalBookmark.type === "file" && finalBookmark.fileUrl && (() => {
+            const fileName = finalBookmark.metadata?.fileName || finalBookmark.title
+            const fileType = getFileType(fileName)
+            const fileSize = finalBookmark.metadata?.fileSize
+
+            if (fileType === "pdf") {
+              return (
+                <div className="mt-4 rounded-xl border border-[#1f1f1f] overflow-hidden">
+                  <iframe
+                    src={`${finalBookmark.fileUrl}#toolbar=0&navpanes=0`}
+                    className="w-full h-[50vh] bg-[#0a0a0a]"
+                    title={fileName}
+                  />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
-                    {finalBookmark.metadata?.fileName || finalBookmark.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {finalBookmark.metadata?.fileSize
-                      ? `${(finalBookmark.metadata.fileSize / 1024).toFixed(1)} KB`
-                      : "File"}
-                  </p>
+              )
+            }
+
+            if (fileType === "video") {
+              return (
+                <div className="mt-4 rounded-xl border border-[#1f1f1f] overflow-hidden bg-[#0a0a0a]">
+                  <video
+                    src={finalBookmark.fileUrl}
+                    controls
+                    className="w-full max-h-[50vh]"
+                  >
+                    Your browser does not support video playback.
+                  </video>
+                </div>
+              )
+            }
+
+            if (fileType === "audio") {
+              return (
+                <div className="mt-4 rounded-xl border border-[#1f1f1f] bg-[#141414] p-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a1a1a]">
+                      <File className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {fileName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {fileSize ? formatFileSize(fileSize) : "Audio"}
+                      </p>
+                    </div>
+                  </div>
+                  <audio
+                    src={finalBookmark.fileUrl}
+                    controls
+                    className="w-full"
+                  >
+                    Your browser does not support audio playback.
+                  </audio>
+                </div>
+              )
+            }
+
+            if (fileType === "image") {
+              return (
+                <button
+                  onClick={() => setIsPreviewOpen(true)}
+                  className="mt-4 w-full rounded-xl overflow-hidden border border-[#1f1f1f] relative group cursor-zoom-in"
+                >
+                  <img
+                    src={finalBookmark.fileUrl}
+                    alt={finalBookmark.title}
+                    className="max-h-48 w-full object-contain bg-[#0a0a0a]"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                    <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </button>
+              )
+            }
+
+            // Default file preview
+            return (
+              <div className="mt-4 rounded-xl border border-[#1f1f1f] bg-[#141414] p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a1a1a]">
+                    <File className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {fileName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {fileSize ? formatFileSize(fileSize) : "File"}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {finalBookmark.type === "note" && (
             <div className="mt-4 rounded-xl border border-[#1f1f1f] bg-[#141414] p-4">

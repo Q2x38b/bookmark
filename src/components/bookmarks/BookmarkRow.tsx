@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, forwardRef, useCallback } from "react"
+import { useState, useRef, useEffect, forwardRef, useCallback, memo } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id, Doc } from "../../../convex/_generated/dataModel"
@@ -65,7 +65,7 @@ const isTouchDevice = () => {
 const ACTION_WIDTH = 100
 const SNAP_THRESHOLD = 55 // Higher = harder to trigger, easier to snap back
 
-export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function BookmarkRow({
+export const BookmarkRow = memo(forwardRef<HTMLDivElement, BookmarkRowProps>(function BookmarkRow({
   bookmark,
   isSelected,
   isFocused,
@@ -619,4 +619,4 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
 
   // On mobile, just return the row content with swipe
   return <div ref={ref}>{rowContent}</div>
-})
+}))
