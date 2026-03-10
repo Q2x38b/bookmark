@@ -23,6 +23,7 @@ import { ExportModal } from "@/components/modals/ExportModal"
 import { FilePreviewModal } from "@/components/modals/FilePreviewModal"
 import { CreateBookmarkModal } from "@/components/modals/CreateBookmarkModal"
 import { BulkShareModal } from "@/components/modals/BulkShareModal"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useHaptics } from "@/hooks/useHaptics"
 
 interface BookmarkListProps {
@@ -118,7 +119,8 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
         return
       }
 
-      if (isInputFocused && inputRef.current === document.activeElement) {
+      // Don't handle keyboard shortcuts when any input is focused (search, rename, etc.)
+      if (isInputFocused) {
         return
       }
 
@@ -304,7 +306,7 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Sticky header section */}
-      <div className="shrink-0 bg-background pt-4 pb-2 space-y-2 px-2">
+      <div className="shrink-0 bg-background pt-4 pb-2 space-y-2 px-3">
         <BookmarkInput
           userId={userId}
           groupId={groupId}
@@ -322,7 +324,7 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
       </div>
 
       {/* Scrollable Bookmark List */}
-      <div className="flex-1 overflow-y-auto pb-16 px-2">
+      <div className="flex-1 overflow-y-auto pb-16 px-3">
         <LayoutGroup>
           <div ref={listRef} className="space-y-0.5">
             {bookmarks?.map((bookmark, index) => (
@@ -581,27 +583,37 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
               </Button>
 
               {/* Delete - always visible */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 rounded-md text-[11px] sm:text-xs h-auto sm:h-7 py-1.5 sm:py-0 px-2 sm:px-2 text-destructive hover:text-destructive active:bg-destructive/20 shrink-0"
-                onClick={handleDeleteSelected}
-                disabled={selectedIds.size === 0}
-              >
-                <Trash2 className="h-4 sm:h-3.5 w-4 sm:w-3.5" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 rounded-md text-[11px] sm:text-xs h-auto sm:h-7 py-1.5 sm:py-0 px-2 sm:px-2 text-destructive hover:text-destructive active:bg-destructive/20 shrink-0"
+                    onClick={handleDeleteSelected}
+                    disabled={selectedIds.size === 0}
+                  >
+                    <Trash2 className="h-4 sm:h-3.5 w-4 sm:w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Delete selected</TooltipContent>
+              </Tooltip>
 
               <div className="hidden sm:block w-px h-4 bg-muted mx-0.5 shrink-0" />
 
               {/* Close button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="flex-col gap-0.5 h-auto sm:h-7 w-auto sm:w-7 py-1.5 sm:py-0 px-2 sm:px-0 rounded-md shrink-0 active:bg-muted"
-                onClick={handleExitSelectMode}
-              >
-                <X className="h-4 sm:h-3.5 w-4 sm:w-3.5" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="flex-col gap-0.5 h-auto sm:h-7 w-auto sm:w-7 py-1.5 sm:py-0 px-2 sm:px-0 rounded-md shrink-0 active:bg-muted"
+                    onClick={handleExitSelectMode}
+                  >
+                    <X className="h-4 sm:h-3.5 w-4 sm:w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Exit select mode</TooltipContent>
+              </Tooltip>
             </div>
             </div>
           </motion.div>

@@ -10,18 +10,53 @@ import {
   ExternalLink,
   Copy,
   Check,
+  Download,
   Loader2,
   Clock,
   Lock,
   AlertTriangle,
   ShieldAlert,
+  X,
+  ZoomIn,
 } from "lucide-react"
 import { Logo } from "@/components/Logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useHaptics } from "@/hooks/useHaptics"
 import { useState, useEffect, useRef } from "react"
+
+function SharedBookmarkSkeleton() {
+  return (
+    <div className="min-h-full flex flex-col items-center justify-center bg-[#0a0a0a] px-4 py-8">
+      <div className="w-full max-w-sm">
+        {/* Card skeleton */}
+        <div className="rounded-2xl border border-[#1f1f1f] bg-[#141414] p-5">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-12 w-12 rounded-xl shrink-0 bg-[#1a1a1a]" />
+            <div className="flex-1 min-w-0 space-y-2">
+              <Skeleton className="h-4 w-3/4 bg-[#1a1a1a]" />
+              <Skeleton className="h-3 w-16 bg-[#1a1a1a]" />
+            </div>
+          </div>
+        </div>
+
+        {/* Buttons skeleton */}
+        <div className="mt-4 flex gap-2">
+          <Skeleton className="flex-1 h-11 rounded-md bg-[#1a1a1a]" />
+          <Skeleton className="flex-1 h-11 rounded-md bg-[#1a1a1a]" />
+        </div>
+
+        {/* Footer skeleton */}
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <Skeleton className="h-3 w-20 bg-[#1a1a1a]" />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function SharedBookmark() {
   const { shareId } = useParams<{ shareId: string }>()
@@ -32,6 +67,7 @@ export default function SharedBookmark() {
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false)
   const [enteredPassword, setEnteredPassword] = useState<string | null>(null)
   const [confirmedUnsafe, setConfirmedUnsafe] = useState(false)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const viewCounted = useRef(false)
 
   // First query to check share status
@@ -112,13 +148,34 @@ export default function SharedBookmark() {
     }
   }, [protectedBookmark, haptics])
 
+  const handleDownload = async () => {
+    const bm = enteredPassword ? protectedBookmark : bookmarkData
+    if (!bm) return
+    if ('requiresPassword' in bm || 'expired' in bm || 'invalidPassword' in bm) return
+
+    if (bm.fileUrl) {
+      haptics.soft()
+      try {
+        const response = await fetch(bm.fileUrl)
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = bm.metadata?.fileName || bm.title || 'download'
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      } catch {
+        // Fallback to opening in new tab
+        window.open(bm.fileUrl, "_blank")
+      }
+    }
+  }
+
   // Loading state
   if (bookmarkData === undefined) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <SharedBookmarkSkeleton />
   }
 
   // Not found state
@@ -294,11 +351,7 @@ export default function SharedBookmark() {
 
   // Loading protected content
   if (enteredPassword && protectedBookmark === undefined) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <SharedBookmarkSkeleton />
   }
 
   // Invalid password
@@ -434,84 +487,176 @@ export default function SharedBookmark() {
     }
   }
 
+  const getCopyTooltip = () => {
+    switch (finalBookmark.type) {
+      case "link": return "Copy link URL"
+      case "color": return "Copy color code"
+      case "note": return "Copy text content"
+      case "image": return "Copy image URL"
+      case "file": return "Copy file URL"
+      default: return "Copy to clipboard"
+    }
+  }
+
   return (
-    <div className="min-h-full flex flex-col items-center justify-center bg-[#0a0a0a] px-4 py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm"
-      >
-        {/* Simple Card */}
-        <div className="rounded-2xl border border-[#1f1f1f] bg-[#141414] p-5">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1a1a1a]">
-              {getIcon()}
+    <TooltipProvider delayDuration={300}>
+      <div className="min-h-full flex flex-col items-center justify-center bg-[#0a0a0a] px-4 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-sm"
+        >
+          {/* Simple Card */}
+          <div className="rounded-2xl border border-[#1f1f1f] bg-[#141414] p-5">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#1a1a1a]">
+                {getIcon()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-[15px] font-medium text-white truncate">
+                  {finalBookmark.title}
+                </h1>
+                <p className="text-[13px] text-muted-foreground">
+                  {getTypeLabel()}
+                </p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-[15px] font-medium text-white truncate">
-                {finalBookmark.title}
-              </h1>
-              <p className="text-[13px] text-muted-foreground">
-                {getTypeLabel()}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-4 flex gap-2">
+            {finalBookmark.type === "link" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handleOpen}
+                    className="flex-1 h-11 gap-2 bg-white text-black hover:bg-white/90"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Open link in new tab</TooltipContent>
+              </Tooltip>
+            )}
+            {finalBookmark.fileUrl && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handleDownload}
+                    className="flex-1 h-11 gap-2 bg-white text-black hover:bg-white/90"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download {finalBookmark.type === "image" ? "image" : "file"}</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  onClick={handleCopy}
+                  className="flex-1 h-11 gap-2 border-[#262626] bg-[#141414] hover:bg-[#1a1a1a]"
+                >
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? "Copied" : "Copy"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{getCopyTooltip()}</TooltipContent>
+            </Tooltip>
+          </div>
+
+          {/* Preview for certain types */}
+          {finalBookmark.type === "color" && (
+            <div
+              className="mt-4 h-20 w-full rounded-xl"
+              style={{ backgroundColor: finalBookmark.content }}
+            />
+          )}
+
+          {finalBookmark.type === "image" && finalBookmark.fileUrl && (
+            <button
+              onClick={() => setIsPreviewOpen(true)}
+              className="mt-4 w-full rounded-xl overflow-hidden border border-[#1f1f1f] relative group cursor-zoom-in"
+            >
+              <img
+                src={finalBookmark.fileUrl}
+                alt={finalBookmark.title}
+                className="max-h-48 w-full object-contain bg-[#0a0a0a]"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </button>
+          )}
+
+          {finalBookmark.type === "file" && finalBookmark.fileUrl && (
+            <div className="mt-4 rounded-xl border border-[#1f1f1f] bg-[#141414] p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a1a1a]">
+                  <File className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">
+                    {finalBookmark.metadata?.fileName || finalBookmark.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {finalBookmark.metadata?.fileSize
+                      ? `${(finalBookmark.metadata.fileSize / 1024).toFixed(1)} KB`
+                      : "File"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {finalBookmark.type === "note" && (
+            <div className="mt-4 rounded-xl border border-[#1f1f1f] bg-[#141414] p-4">
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
+                {finalBookmark.content}
               </p>
             </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="mt-4 flex gap-2">
-          {(finalBookmark.type === "link" || finalBookmark.fileUrl) && (
-            <Button
-              onClick={handleOpen}
-              className="flex-1 h-11 gap-2 bg-white text-black hover:bg-white/90"
-            >
-              <ExternalLink className="h-4 w-4" />
-              {finalBookmark.type === "link" ? "Open" : "Download"}
-            </Button>
           )}
-          <Button
-            variant="outline"
-            onClick={handleCopy}
-            className="flex-1 h-11 gap-2 border-[#262626] bg-[#141414] hover:bg-[#1a1a1a]"
+
+          {/* Footer */}
+          <a
+            href="https://noira.im"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 flex items-center justify-center gap-2 text-muted-foreground hover:text-white transition-colors"
           >
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copied ? "Copied" : "Copy"}
-          </Button>
-        </div>
+            <span className="text-xs">Shared via</span>
+            <Logo size={14} />
+            <span className="text-xs">Noira</span>
+          </a>
+        </motion.div>
+      </div>
 
-        {/* Preview for certain types */}
-        {finalBookmark.type === "color" && (
-          <div
-            className="mt-4 h-20 w-full rounded-xl"
-            style={{ backgroundColor: finalBookmark.content }}
+      {/* Fullscreen Image Preview */}
+      {isPreviewOpen && finalBookmark.fileUrl && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4"
+          onClick={() => setIsPreviewOpen(false)}
+        >
+          <button
+            onClick={() => setIsPreviewOpen(false)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
+          <img
+            src={finalBookmark.fileUrl}
+            alt={finalBookmark.title}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
           />
-        )}
-
-        {finalBookmark.type === "image" && finalBookmark.fileUrl && (
-          <div className="mt-4 rounded-xl overflow-hidden border border-[#1f1f1f]">
-            <img
-              src={finalBookmark.fileUrl}
-              alt={finalBookmark.title}
-              className="max-h-48 w-full object-contain bg-[#0a0a0a]"
-            />
-          </div>
-        )}
-
-        {finalBookmark.type === "note" && (
-          <div className="mt-4 rounded-xl border border-[#1f1f1f] bg-[#141414] p-4">
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
-              {finalBookmark.content}
-            </p>
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="mt-6 flex items-center justify-center gap-2 text-muted-foreground">
-          <span className="text-xs">Shared via</span>
-          <Logo size={14} />
-          <span className="text-xs">Noira</span>
-        </div>
-      </motion.div>
-    </div>
+        </motion.div>
+      )}
+    </TooltipProvider>
   )
 }

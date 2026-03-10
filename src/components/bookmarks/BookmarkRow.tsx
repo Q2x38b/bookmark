@@ -180,11 +180,11 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
       case "color":
         return content
       case "note":
-        return ""
+        return "Note"
       case "image":
-        return bookmark.metadata?.fileName || ""
+        return bookmark.metadata?.fileName || "Image"
       case "file":
-        return bookmark.metadata?.fileName || ""
+        return bookmark.metadata?.fileName || "File"
       default:
         return ""
     }
@@ -329,7 +329,7 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
       {/* Left action (shown when swiping right) - Copy + More */}
       {isMobile && (
         <motion.div
-          className="absolute inset-y-0 left-0 flex items-center justify-center gap-2 px-2"
+          className={`absolute inset-y-0 left-0 flex items-center justify-center gap-2 px-2 ${isSwiped !== "right" ? "pointer-events-none" : ""}`}
           style={{ opacity: leftActionOpacity, width: ACTION_WIDTH }}
         >
           <button
@@ -358,7 +358,7 @@ export const BookmarkRow = forwardRef<HTMLDivElement, BookmarkRowProps>(function
       {/* Right action (shown when swiping left) - Delete */}
       {isMobile && (
         <motion.div
-          className="absolute inset-y-0 right-0 flex items-center justify-center"
+          className={`absolute inset-y-0 right-0 flex items-center justify-center ${isSwiped !== "left" ? "pointer-events-none" : ""}`}
           style={{ opacity: rightActionOpacity, width: ACTION_WIDTH }}
         >
           <button

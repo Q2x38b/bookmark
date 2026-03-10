@@ -9,7 +9,49 @@ import { BookmarkList } from "@/components/bookmarks/BookmarkList"
 import { KeyboardShortcutsModal } from "@/components/modals/KeyboardShortcutsModal"
 import { Onboarding } from "@/components/Onboarding"
 import { useUser } from "@/hooks/useUser"
-import { Loader2 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col h-full bg-background overflow-hidden">
+      {/* Header skeleton */}
+      <header className="shrink-0 flex h-10 items-center justify-between bg-background px-4 sm:px-6">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-[22px] w-[22px] rounded" />
+          <span className="text-muted-foreground/60">/</span>
+          <Skeleton className="h-8 w-24 rounded-xl" />
+        </div>
+        <Skeleton className="h-8 w-32 rounded-xl" />
+      </header>
+
+      {/* Main content skeleton */}
+      <main className="flex-1 overflow-hidden flex justify-center px-4 sm:px-6">
+        <div className="w-full max-w-xl">
+          <div className="pt-4 pb-2 space-y-2 px-3">
+            {/* Search input skeleton */}
+            <Skeleton className="h-9 w-full rounded-md" />
+            {/* Column headers skeleton */}
+            <div className="flex items-center gap-1.5 px-2 pb-1.5 border-b border-border">
+              <Skeleton className="h-3 w-12" />
+              <div className="flex-1" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+          </div>
+          {/* Bookmark rows skeleton */}
+          <div className="px-3 space-y-0.5">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="flex items-center gap-2 px-2.5 py-2 rounded-md">
+                <Skeleton className="h-5 w-5 rounded shrink-0" />
+                <Skeleton className="h-4 flex-1" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
 
 export default function Dashboard() {
   const { userId, isLoaded } = useUser()
@@ -33,30 +75,14 @@ export default function Dashboard() {
     }
   }, [groups, selectedGroupId])
 
-  if (!isLoaded || !userId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (!groups) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+  if (!isLoaded || !userId || !groups) {
+    return <DashboardSkeleton />
   }
 
   const currentGroupId = selectedGroupId || groups[0]?._id
 
   if (!currentGroupId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <DashboardSkeleton />
   }
 
   return (
