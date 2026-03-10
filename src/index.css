@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  .dark {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 92%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 92%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 92%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 4%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 92%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 42%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 92%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 18%;
+    --input: 0 0% 12%;
+    --ring: 0 0% 98%;
+    --radius: 0.5rem;
+
+    /* Custom semantic colors */
+    --surface: 0 0% 14%;
+    --surface-hover: 0 0% 18%;
+    --text-primary: 0 0% 92%;
+    --text-secondary: 0 0% 61%;
+    --text-muted: 0 0% 42%;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 35%;
+    --accent: 0 0% 95%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 85%;
+    --input: 0 0% 95%;
+    --ring: 0 0% 9%;
+    --radius: 0.5rem;
+
+    /* Custom semantic colors */
+    --surface: 0 0% 96%;
+    --surface-hover: 0 0% 92%;
+    --text-primary: 0 0% 9%;
+    --text-secondary: 0 0% 30%;
+    --text-muted: 0 0% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+    overflow: hidden;
+    height: 100%;
+    scroll-behavior: smooth;
+  }
+  #root {
+    height: 100%;
+    overflow: auto;
+    overscroll-behavior: none;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Selection */
+::selection {
+  background: hsl(var(--primary) / 0.2);
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Disable default iOS tap highlight - always replace with custom focus/active states */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch-specific styles */
+@media (pointer: coarse) {
+  /* Larger touch targets for mobile */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Active state for touch feedback */
+  .touch-active:active {
+    background: hsl(var(--accent) / 0.5);
+    transform: scale(0.98);
+  }
+}
+
+/* Only apply hover states on devices that support hover */
+@media (hover: hover) {
+  .hover-only:hover {
+    background: hsl(var(--accent));
+  }
+}
+
+/* Smooth touch scrolling */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Prevent text selection on interactive elements */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Safe area insets for notched devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Prevent transitions during theme changes */
+html.theme-transition-disabled,
+html.theme-transition-disabled *,
+html.theme-transition-disabled *::before,
+html.theme-transition-disabled *::after {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
+}
+
+/* Tabular figures for consistent number widths in dates/timers */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Disable user-select on interactive elements */
+button,
+[role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Decorative elements should not capture pointer events */
+.decorative {
+  pointer-events: none;
+}
+
+/* Gradient text should unset gradient on selection */
+.gradient-text::selection {
+  background: hsl(var(--primary) / 0.3);
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  -webkit-text-fill-color: unset;
+}

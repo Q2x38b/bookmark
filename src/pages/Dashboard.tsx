@@ -1,0 +1,101 @@
+import { useState, useEffect } from "react"
+import { useQuery } from "convex/react"
+import { api } from "../../convex/_generated/api"
+import { Id } from "../../convex/_generated/dataModel"
+import { Logo } from "@/components/Logo"
+import { GroupDropdown } from "@/components/groups/GroupDropdown"
+import { ProfileDropdown } from "@/components/profile/ProfileDropdown"
+import { BookmarkList } from "@/components/bookmarks/BookmarkList"
+import { KeyboardShortcutsModal } from "@/components/modals/KeyboardShortcutsModal"
+import { Onboarding } from "@/components/Onboarding"
+import { useUser } from "@/hooks/useUser"
+import { Loader2 } from "lucide-react"
+
+export default function Dashboard() {
+  const { userId, isLoaded } = useUser()
+  const [selectedGroupId, setSelectedGroupId] = useState<Id<"groups"> | null>(null)
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false)
+
+  const groups = useQuery(
+    api.groups.getGroups,
+    userId ? { userId } : "skip"
+  )
+
+  const user = useQuery(
+    api.users.getUserById,
+    userId ? { userId } : "skip"
+  )
+
+  // Set default group when groups load
+  useEffect(() => {
+    if (groups && groups.length > 0 && !selectedGroupId) {
+      setSelectedGroupId(groups[0]._id)
+    }
+  }, [groups, selectedGroupId])
+
+  if (!isLoaded || !userId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!groups) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  const currentGroupId = selectedGroupId || groups[0]?._id
+
+  if (!currentGroupId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 flex h-12 items-center justify-between bg-background/95 backdrop-blur px-4">
+        <div className="flex items-center gap-2">
+          <Logo size={22} />
+          <span className="text-muted-foreground/60">/</span>
+          <GroupDropdown
+            userId={userId}
+            selectedGroupId={currentGroupId}
+            onSelectGroup={(id) => setSelectedGroupId(id)}
+          />
+        </div>
+        <ProfileDropdown
+          userId={userId}
+          userTheme={user?.theme}
+          onOpenShortcuts={() => setIsShortcutsOpen(true)}
+        />
+      </header>
+
+      {/* Main Content */}
+      <main className="mx-auto max-w-3xl px-3 py-4">
+        <BookmarkList
+          userId={userId}
+          groupId={currentGroupId}
+          groups={groups}
+        />
+      </main>
+
+      <KeyboardShortcutsModal
+        open={isShortcutsOpen}
+        onOpenChange={setIsShortcutsOpen}
+        userId={userId}
+        currentShortcuts={user?.keyboardShortcuts}
+      />
+
+      <Onboarding isNewUser />
+    </div>
+  )
+}
