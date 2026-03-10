@@ -15,22 +15,16 @@ export function Logo({ className, size = 32 }: LogoProps) {
       xmlns="http://www.w3.org/2000/svg"
       className={cn(className)}
     >
-      <defs>
-        <linearGradient id="bookmarkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#4F7DFF" />
-          <stop offset="100%" stopColor="#2B4FD9" />
-        </linearGradient>
-      </defs>
-      {/* Bookmark shape */}
+      {/* Bookmark shape background */}
       <path
         d="M4 3C4 2.44772 4.44772 2 5 2H19C19.5523 2 20 2.44772 20 3V21.5C20 21.8466 19.7934 22.1598 19.4743 22.2966C19.1552 22.4334 18.7843 22.3683 18.5303 22.1303L12 16.0607L5.46967 22.1303C5.21575 22.3683 4.84479 22.4334 4.52567 22.2966C4.20656 22.1598 4 21.8466 4 21.5V3Z"
-        fill="url(#bookmarkGradient)"
+        fill="#0a0a0a"
       />
-      {/* Star sparkle */}
-      <path
-        d="M17.5 5L18.2 6.6L20 7L18.2 7.4L17.5 9L16.8 7.4L15 7L16.8 6.6L17.5 5Z"
-        fill="#FF4F8B"
-      />
+      {/* 4-box grid pattern inside bookmark */}
+      <rect x="6" y="4" width="5" height="5" rx="1" fill="#fafafa" fillOpacity="0.9" />
+      <rect x="13" y="4" width="5" height="5" rx="1" fill="#fafafa" fillOpacity="0.6" />
+      <rect x="6" y="11" width="5" height="5" rx="1" fill="#fafafa" fillOpacity="0.4" />
+      <rect x="13" y="11" width="5" height="5" rx="1" fill="#fafafa" fillOpacity="0.7" />
     </svg>
   )
 }

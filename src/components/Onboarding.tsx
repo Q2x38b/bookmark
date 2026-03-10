@@ -298,17 +298,16 @@ export function Onboarding({ isNewUser = false }: OnboardingProps) {
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
       className="fixed bottom-4 left-4 z-50"
     >
-      <div className="w-64 rounded-2xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden">
-        {/* Close button */}
-        <button
-          onClick={handleDismiss}
-          className="absolute top-3 right-3 z-10 p-1 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-all"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-
+      <div className="relative w-64 rounded-2xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden">
         {/* Content with slide animation */}
         <div className="p-3 overflow-hidden">
+          {/* Close button - inside content area */}
+          <button
+            onClick={handleDismiss}
+            className="absolute top-1.5 right-1.5 z-10 p-1 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 transition-all"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={currentTip}
