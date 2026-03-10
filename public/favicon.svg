@@ -1,26 +1,20 @@
 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <style>
-    .q1 { fill: #fafafa; fill-opacity: 0.9; }
-    .q2 { fill: #fafafa; fill-opacity: 0.6; }
-    .q3 { fill: #fafafa; fill-opacity: 0.4; }
-    .q4 { fill: #fafafa; fill-opacity: 0.7; }
+    .main { fill: #fafafa; }
+    .fold { fill: #fafafa; fill-opacity: 0.5; }
     @media (prefers-color-scheme: light) {
-      .q1 { fill: #0a0a0a; fill-opacity: 0.9; }
-      .q2 { fill: #0a0a0a; fill-opacity: 0.6; }
-      .q3 { fill: #0a0a0a; fill-opacity: 0.4; }
-      .q4 { fill: #0a0a0a; fill-opacity: 0.7; }
+      .main { fill: #0a0a0a; }
+      .fold { fill: #0a0a0a; fill-opacity: 0.5; }
     }
   </style>
-  <defs>
-    <clipPath id="bookmark-clip">
-      <path d="M4 3C4 2.44772 4.44772 2 5 2H19C19.5523 2 20 2.44772 20 3V21.5C20 21.8466 19.7934 22.1598 19.4743 22.2966C19.1552 22.4334 18.7843 22.3683 18.5303 22.1303L12 16.0607L5.46967 22.1303C5.21575 22.3683 4.84479 22.4334 4.52567 22.2966C4.20656 22.1598 4 21.8466 4 21.5V3Z" />
-    </clipPath>
-  </defs>
-  <!-- 4-box grid pattern clipped to bookmark shape -->
-  <g clip-path="url(#bookmark-clip)">
-    <rect class="q1" x="4" y="2" width="7.5" height="9"/>
-    <rect class="q2" x="12.5" y="2" width="7.5" height="9"/>
-    <rect class="q3" x="4" y="12" width="7.5" height="11"/>
-    <rect class="q4" x="12.5" y="12" width="7.5" height="11"/>
-  </g>
+  <!-- Modern minimalist bookmark with subtle fold -->
+  <path
+    class="main"
+    d="M5 3C5 2.44772 5.44772 2 6 2H18C18.5523 2 19 2.44772 19 3V21.382C19 21.9314 18.3761 22.2515 17.9254 21.9254L12 17.5L6.07459 21.9254C5.62392 22.2515 5 21.9314 5 21.382V3Z"
+  />
+  <!-- Corner fold accent -->
+  <path
+    class="fold"
+    d="M14 2H18C18.5523 2 19 2.44772 19 3V7L14 2Z"
+  />
 </svg>
