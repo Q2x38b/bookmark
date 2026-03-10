@@ -94,7 +94,7 @@ export function GroupDropdown({ userId, selectedGroupId, onSelectGroup }: GroupD
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="gap-2 px-2.5 h-8 rounded-xl focus-visible:shadow-none active:scale-100 active:bg-accent focus:bg-accent data-[state=open]:bg-accent !transition-none">
+          <Button variant="ghost" className="gap-2 px-2.5 h-8 rounded-xl focus-visible:shadow-none active:scale-100 hover:bg-transparent data-[state=open]:bg-accent [&:hover:not([data-state=open])]:bg-accent !transition-none">
             <div
               className="h-2 w-2 rounded-full"
               style={{ backgroundColor: selectedGroup?.color || GROUP_COLORS[0] }}

@@ -80,7 +80,7 @@ export function ProfileDropdown({ userId, userTheme, onOpenShortcuts }: ProfileD
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="gap-2 px-2 h-8 rounded-xl focus-visible:shadow-none active:scale-100 active:bg-accent focus:bg-accent data-[state=open]:bg-accent !transition-none">
+          <Button variant="ghost" className="gap-2 px-2 h-8 rounded-xl focus-visible:shadow-none active:scale-100 hover:bg-transparent data-[state=open]:bg-accent [&:hover:not([data-state=open])]:bg-accent !transition-none">
             <Avatar className="h-6 w-6">
               <AvatarImage src={user.imageUrl} alt={user.fullName || "User"} />
               <AvatarFallback className="text-xs">

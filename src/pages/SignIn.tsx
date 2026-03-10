@@ -69,12 +69,12 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-full flex flex-col items-center justify-center bg-background px-6 py-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6 py-8">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-[340px]"
+        className="w-full max-w-[320px]"
       >
         {/* Header */}
         <div className="mb-6">
