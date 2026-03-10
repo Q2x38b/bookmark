@@ -62,30 +62,34 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Header */}
-      <header className="shrink-0 flex h-12 items-center justify-between bg-background px-4">
-        <div className="flex items-center gap-2">
-          <Logo size={22} />
-          <span className="text-muted-foreground/60">/</span>
-          <GroupDropdown
+      <header className="shrink-0 flex h-12 items-center justify-center bg-background px-4 sm:px-6">
+        <div className="w-full max-w-xl flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Logo size={22} />
+            <span className="text-muted-foreground/60">/</span>
+            <GroupDropdown
+              userId={userId}
+              selectedGroupId={currentGroupId}
+              onSelectGroup={(id) => setSelectedGroupId(id)}
+            />
+          </div>
+          <ProfileDropdown
             userId={userId}
-            selectedGroupId={currentGroupId}
-            onSelectGroup={(id) => setSelectedGroupId(id)}
+            userTheme={user?.theme}
+            onOpenShortcuts={() => setIsShortcutsOpen(true)}
           />
         </div>
-        <ProfileDropdown
-          userId={userId}
-          userTheme={user?.theme}
-          onOpenShortcuts={() => setIsShortcutsOpen(true)}
-        />
       </header>
 
       {/* Main Content - scrollable area */}
-      <main className="flex-1 overflow-hidden">
-        <BookmarkList
-          userId={userId}
-          groupId={currentGroupId}
-          groups={groups}
-        />
+      <main className="flex-1 overflow-hidden flex justify-center px-4 sm:px-6">
+        <div className="w-full max-w-xl">
+          <BookmarkList
+            userId={userId}
+            groupId={currentGroupId}
+            groups={groups}
+          />
+        </div>
       </main>
 
       <KeyboardShortcutsModal
