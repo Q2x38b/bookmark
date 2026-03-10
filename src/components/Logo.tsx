@@ -6,6 +6,8 @@ interface LogoProps {
 }
 
 export function Logo({ className, size = 32 }: LogoProps) {
+  const id = `logo-${Math.random().toString(36).substr(2, 9)}`
+
   return (
     <svg
       width={size}
@@ -15,16 +17,18 @@ export function Logo({ className, size = 32 }: LogoProps) {
       xmlns="http://www.w3.org/2000/svg"
       className={cn(className)}
     >
-      {/* Modern minimalist bookmark with subtle fold */}
+      <defs>
+        <mask id={id}>
+          <rect width="24" height="24" fill="white" />
+          {/* Circular cutout */}
+          <circle cx="12" cy="8" r="3" fill="black" />
+        </mask>
+      </defs>
+      {/* Bookmark with circular cutout */}
       <path
         d="M5 3C5 2.44772 5.44772 2 6 2H18C18.5523 2 19 2.44772 19 3V21.382C19 21.9314 18.3761 22.2515 17.9254 21.9254L12 17.5L6.07459 21.9254C5.62392 22.2515 5 21.9314 5 21.382V3Z"
         fill="#fafafa"
-      />
-      {/* Corner fold accent */}
-      <path
-        d="M14 2H18C18.5523 2 19 2.44772 19 3V7L14 2Z"
-        fill="#fafafa"
-        fillOpacity="0.5"
+        mask={`url(#${id})`}
       />
     </svg>
   )
