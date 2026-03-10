@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { useHaptics } from "@/hooks/useHaptics"
 
 export default function SignUp() {
   const { signUp, setActive, isLoaded } = useSignUp()
   const navigate = useNavigate()
+  const haptics = useHaptics()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -37,8 +39,10 @@ export default function SignUp() {
       })
 
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" })
+      haptics.success()
       setPendingVerification(true)
     } catch (err: unknown) {
+      haptics.error()
       const clerkError = err as { errors?: Array<{ message: string }> }
       setError(clerkError.errors?.[0]?.message || "Sign up failed")
     } finally {
@@ -59,10 +63,12 @@ export default function SignUp() {
       })
 
       if (result.status === "complete") {
+        haptics.success()
         await setActive({ session: result.createdSessionId })
         navigate("/")
       }
     } catch (err: unknown) {
+      haptics.error()
       const clerkError = err as { errors?: Array<{ message: string }> }
       setError(clerkError.errors?.[0]?.message || "Verification failed")
     } finally {
@@ -83,6 +89,7 @@ export default function SignUp() {
         redirectUrlComplete: "/",
       })
     } catch (err: unknown) {
+      haptics.error()
       const clerkError = err as { errors?: Array<{ message: string }> }
       setError(clerkError.errors?.[0]?.message || "Google sign up failed")
       setIsGoogleLoading(false)

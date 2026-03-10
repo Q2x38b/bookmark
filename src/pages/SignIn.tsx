@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { useHaptics } from "@/hooks/useHaptics"
 
 export default function SignIn() {
   const { signIn, setActive, isLoaded } = useSignIn()
   const navigate = useNavigate()
+  const haptics = useHaptics()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -33,10 +35,12 @@ export default function SignIn() {
       })
 
       if (result.status === "complete") {
+        haptics.success()
         await setActive({ session: result.createdSessionId })
         navigate("/")
       }
     } catch (err: unknown) {
+      haptics.error()
       const clerkError = err as { errors?: Array<{ message: string }> }
       setError(clerkError.errors?.[0]?.message || "Invalid email or password")
     } finally {
@@ -57,6 +61,7 @@ export default function SignIn() {
         redirectUrlComplete: "/",
       })
     } catch (err: unknown) {
+      haptics.error()
       const clerkError = err as { errors?: Array<{ message: string }> }
       setError(clerkError.errors?.[0]?.message || "Google sign in failed")
       setIsGoogleLoading(false)

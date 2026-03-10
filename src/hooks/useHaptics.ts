@@ -1,81 +1,66 @@
+import { useWebHaptics } from "web-haptics/react"
 import { useCallback, useMemo } from "react"
 
-// Detect iOS - all browsers on iOS use WebKit (Apple policy)
-// Chrome, Safari, Firefox on iOS are all WebKit-based
-const isIOS = typeof navigator !== "undefined" &&
-  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1))
+export function useHaptics() {
+  const { trigger, isSupported } = useWebHaptics()
 
-// Check if vibration is supported
-// IMPORTANT: iOS does NOT support the Vibration API in ANY browser
-// This is a WebKit/platform limitation - the API simply doesn't exist on iOS
-// Haptics will be no-ops on iOS devices (no error, just silent)
-const isVibrationSupported = typeof navigator !== "undefined" &&
-  "vibrate" in navigator &&
-  typeof navigator.vibrate === "function" &&
-  !isIOS
-
-// Haptic feedback patterns using native Vibration API
-// Pattern format: [vibrate, pause, vibrate, pause, ...] in milliseconds
-export const hapticPatterns = {
   // Success - satisfying double tap for completed actions
-  success: [12, 60, 25],
+  const success = useCallback(() => {
+    trigger([
+      { duration: 30 },
+      { delay: 60, duration: 40, intensity: 1 },
+    ])
+  }, [trigger])
 
   // Warning - attention-getting pulse
-  warning: [35, 100, 35],
+  const warning = useCallback(() => {
+    trigger([
+      { duration: 40, intensity: 0.8 },
+      { delay: 100, duration: 40, intensity: 0.6 },
+    ])
+  }, [trigger])
 
   // Error - rapid triple buzz for failures
-  error: [25, 40, 25, 40, 35],
+  const error = useCallback(() => {
+    trigger([
+      { duration: 40, intensity: 0.7 },
+      { delay: 40, duration: 40, intensity: 0.7 },
+      { delay: 40, duration: 40, intensity: 0.9 },
+      { delay: 40, duration: 50, intensity: 0.6 },
+    ])
+  }, [trigger])
 
   // Soft - very light tap for subtle feedback (button taps, navigation)
-  soft: [8],
+  const soft = useCallback(() => {
+    trigger([{ duration: 40 }])
+  }, [trigger])
 
   // Rigid - firm single tap (opening menus, important actions)
-  rigid: [18],
+  const rigid = useCallback(() => {
+    trigger([{ duration: 10 }], { intensity: 1 })
+  }, [trigger])
 
   // Selection - quick tick for selecting/deselecting items
-  selection: [10],
+  const selection = useCallback(() => {
+    trigger([{ duration: 8 }], { intensity: 0.3 })
+  }, [trigger])
 
   // Nudge - swipe threshold feedback
-  nudge: [18, 40, 12],
+  const nudge = useCallback(() => {
+    trigger([
+      { duration: 80, intensity: 0.8 },
+      { delay: 80, duration: 50, intensity: 0.3 },
+    ])
+  }, [trigger])
 
   // Buzz - longer vibration for long-press activation
-  buzz: [60],
-} as const
-
-export type HapticPattern = keyof typeof hapticPatterns
-
-export function useHaptics() {
-  const isSupported = isVibrationSupported
-
-  const vibrate = useCallback((pattern: number | number[]) => {
-    if (!isSupported) return false
-    try {
-      return navigator.vibrate(pattern)
-    } catch {
-      return false
-    }
-  }, [isSupported])
-
-  const haptic = useCallback((pattern: HapticPattern) => {
-    return vibrate([...hapticPatterns[pattern]])
-  }, [vibrate])
-
-  // Convenience methods for common actions
-  const success = useCallback(() => haptic("success"), [haptic])
-  const error = useCallback(() => haptic("error"), [haptic])
-  const warning = useCallback(() => haptic("warning"), [haptic])
-  const selection = useCallback(() => haptic("selection"), [haptic])
-  const nudge = useCallback(() => haptic("nudge"), [haptic])
-  const soft = useCallback(() => haptic("soft"), [haptic])
-  const rigid = useCallback(() => haptic("rigid"), [haptic])
-  const buzz = useCallback(() => haptic("buzz"), [haptic])
+  const buzz = useCallback(() => {
+    trigger([{ duration: 1000 }], { intensity: 1 })
+  }, [trigger])
 
   return useMemo(() => ({
-    vibrate,
-    haptic,
+    trigger,
     isSupported,
-    // Convenience methods
     success,
     error,
     warning,
@@ -84,5 +69,5 @@ export function useHaptics() {
     soft,
     rigid,
     buzz,
-  }), [vibrate, haptic, isSupported, success, error, warning, selection, nudge, soft, rigid, buzz])
+  }), [trigger, isSupported, success, error, warning, selection, nudge, soft, rigid, buzz])
 }

@@ -20,10 +20,12 @@ import { Logo } from "@/components/Logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { useHaptics } from "@/hooks/useHaptics"
 import { useState, useEffect, useRef } from "react"
 
 export default function SharedBookmark() {
   const { shareId } = useParams<{ shareId: string }>()
+  const haptics = useHaptics()
   const [copied, setCopied] = useState(false)
   const [password, setPassword] = useState("")
   const [passwordError, setPasswordError] = useState(false)
@@ -69,6 +71,7 @@ export default function SharedBookmark() {
 
     if (!textToCopy) return
     await navigator.clipboard.writeText(textToCopy)
+    haptics.success()
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -79,6 +82,7 @@ export default function SharedBookmark() {
     if ('requiresPassword' in bm || 'expired' in bm || 'invalidPassword' in bm) return
 
     const content = bm.content || bm.url
+    haptics.soft()
     if (bm.type === "link" && content) {
       window.open(content, "_blank")
     } else if (bm.fileUrl) {
@@ -98,13 +102,15 @@ export default function SharedBookmark() {
   // Check for invalid password
   useEffect(() => {
     if (protectedBookmark && 'invalidPassword' in protectedBookmark) {
+      haptics.error()
       setPasswordError(true)
       setIsSubmittingPassword(false)
       setEnteredPassword(null)
     } else if (protectedBookmark && !('invalidPassword' in protectedBookmark)) {
+      haptics.success()
       setIsSubmittingPassword(false)
     }
-  }, [protectedBookmark])
+  }, [protectedBookmark, haptics])
 
   // Loading state
   if (bookmarkData === undefined) {

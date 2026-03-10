@@ -11,10 +11,22 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ open, onOpenChange, children, className }: BottomSheetProps) {
+  const haptics = useHaptics()
+  const prevOpen = React.useRef(open)
+
+  // Trigger haptic when sheet opens
+  React.useEffect(() => {
+    if (open && !prevOpen.current) {
+      haptics.rigid()
+    }
+    prevOpen.current = open
+  }, [open, haptics])
+
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     // Close if: fast flick down (velocity > 300) OR dragged more than 70px down
     // Otherwise snaps back to center
     if (info.velocity.y > 300 || info.offset.y > 70) {
+      haptics.soft()
       onOpenChange(false)
     }
   }
