@@ -20,6 +20,7 @@ import {
   Eye,
   EyeOff,
   MoreVertical,
+  Command,
 } from "lucide-react"
 import {
   ContextMenu,
@@ -142,25 +143,25 @@ export const BookmarkRow = memo(forwardRef<HTMLDivElement, BookmarkRowProps>(fun
     switch (bookmark.type) {
       case "link":
         return bookmark.favicon ? (
-          <img src={bookmark.favicon} alt="" className="h-4 w-4 rounded" />
+          <img src={bookmark.favicon} alt="" className="h-4 w-4 rounded-sm" />
         ) : (
-          <LinkIcon className="h-4 w-4 text-muted-foreground" />
+          <LinkIcon className="h-4 w-4 text-muted-foreground/70" strokeWidth={1.5} />
         )
       case "color":
         return (
           <div
-            className="h-4 w-4 rounded border border-border/50"
+            className="h-4 w-4 rounded-sm ring-1 ring-inset ring-black/10"
             style={{ backgroundColor: bookmark.content }}
           />
         )
       case "note":
-        return <FileText className="h-4 w-4 text-muted-foreground" />
+        return <FileText className="h-4 w-4 text-muted-foreground/70" strokeWidth={1.5} />
       case "image":
-        return <Image className="h-4 w-4 text-muted-foreground" />
+        return <Image className="h-4 w-4 text-muted-foreground/70" strokeWidth={1.5} />
       case "file":
-        return <File className="h-4 w-4 text-muted-foreground" />
+        return <File className="h-4 w-4 text-muted-foreground/70" strokeWidth={1.5} />
       default:
-        return <FileText className="h-4 w-4 text-muted-foreground" />
+        return <FileText className="h-4 w-4 text-muted-foreground/70" strokeWidth={1.5} />
     }
   }
 
@@ -381,12 +382,12 @@ export const BookmarkRow = memo(forwardRef<HTMLDivElement, BookmarkRowProps>(fun
         animate={controls}
         style={{ x }}
         transition={{ type: "spring", damping: 30, stiffness: 400 }}
-        className={`group flex items-center gap-2 px-2.5 py-2 cursor-pointer rounded-md transition-colors duration-75 bg-background ${
+        className={`group flex items-center gap-2 px-2.5 py-2.5 cursor-pointer rounded-lg transition-all duration-100 bg-background ${
           isFocused
-            ? "bg-white/[0.08]"
+            ? "bg-foreground/[0.06]"
             : isSelected
-            ? "bg-white/[0.04]"
-            : ""
+            ? "bg-foreground/[0.04]"
+            : "hover:bg-foreground/[0.03]"
         }`}
         onClick={handleClick}
         onMouseEnter={onFocus}
@@ -445,13 +446,13 @@ export const BookmarkRow = memo(forwardRef<HTMLDivElement, BookmarkRowProps>(fun
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.08 }}
-                className="hidden sm:flex items-center gap-1"
+                transition={{ duration: 0.1 }}
+                className="hidden sm:flex items-center gap-0.5"
               >
-                <kbd className="inline-flex items-center justify-center h-5 min-w-5 px-1 text-[11px] font-medium rounded border border-white/[0.08] bg-white/[0.04] text-[#9b9b9b]">
-                  ⌘
+                <kbd className="inline-flex items-center justify-center h-[18px] min-w-[18px] rounded border border-border/50 bg-muted/50 text-muted-foreground/60">
+                  <Command className="h-2.5 w-2.5" strokeWidth={2} />
                 </kbd>
-                <kbd className="inline-flex items-center justify-center h-5 px-1.5 text-[11px] font-medium rounded border border-white/[0.08] bg-white/[0.04] text-[#9b9b9b]">
+                <kbd className="inline-flex items-center justify-center h-[18px] px-1 text-[10px] font-medium rounded border border-border/50 bg-muted/50 text-muted-foreground/60">
                   Enter
                 </kbd>
               </motion.div>
@@ -461,15 +462,14 @@ export const BookmarkRow = memo(forwardRef<HTMLDivElement, BookmarkRowProps>(fun
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.08 }}
-                className="text-xs text-[#6b6b6b] tabular-nums"
+                transition={{ duration: 0.1 }}
+                className="text-[11px] text-muted-foreground/50 tabular-nums font-medium"
               >
                 {formatDate(bookmark.createdAt)}
               </motion.span>
             )}
           </AnimatePresence>
-
-                  </div>
+        </div>
       </motion.div>
 
       {/* Mobile action sheet (triggered by swipe action) */}

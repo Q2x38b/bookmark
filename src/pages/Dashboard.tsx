@@ -17,20 +17,21 @@ const KeyboardShortcutsModal = lazy(() => import("@/components/modals/KeyboardSh
 export const BookmarkListSkeleton = memo(function BookmarkListSkeleton() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="shrink-0 bg-background pt-4 pb-2 space-y-2 px-3">
-        <Skeleton className="h-9 w-full rounded-md" />
-        <div className="flex items-center gap-1.5 px-2 pb-1.5 border-b border-border">
-          <Skeleton className="h-3 w-12" />
+      <div className="shrink-0 bg-background pt-8 pb-2 space-y-2 px-3">
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="flex items-center gap-1.5 px-2 pb-2 border-b border-border/50">
+          <Skeleton className="h-2.5 w-10" />
           <div className="flex-1" />
-          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-2.5 w-10" />
         </div>
       </div>
       <div className="px-3 space-y-0.5">
         {[...Array(8)].map((_, i) => (
-          <div key={i} className="flex items-center gap-2 px-2.5 py-2 rounded-md">
-            <Skeleton className="h-5 w-5 rounded shrink-0" />
-            <Skeleton className="h-4 flex-1" />
-            <Skeleton className="h-3 w-12" />
+          <div key={i} className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-md" style={{ opacity: 1 - i * 0.08 }}>
+            <Skeleton className="h-4 w-4 rounded-sm shrink-0" />
+            <Skeleton className="h-3.5 flex-1 max-w-[200px]" />
+            <div className="flex-1" />
+            <Skeleton className="h-2.5 w-10" />
           </div>
         ))}
       </div>
@@ -66,12 +67,12 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Header - show real header with logo immediately, skeleton only for data-dependent parts */}
-      <header className="shrink-0 flex h-10 items-center justify-between bg-background px-4 sm:px-6">
-        <div className="flex items-center gap-2">
+      <header className="shrink-0 flex h-12 items-center justify-between bg-background px-4 sm:px-6 border-b border-border/30">
+        <div className="flex items-center gap-2.5">
           <Logo size={22} />
-          <span className="text-muted-foreground/60">/</span>
+          <span className="text-border">/</span>
           {isLoading || !currentGroupId ? (
-            <Skeleton className="h-8 w-24 rounded-xl" />
+            <Skeleton className="h-7 w-24 rounded-lg" />
           ) : (
             <GroupDropdown
               userId={userId}
@@ -81,7 +82,7 @@ export default function Dashboard() {
           )}
         </div>
         {isLoading ? (
-          <Skeleton className="h-8 w-32 rounded-xl" />
+          <Skeleton className="h-7 w-28 rounded-lg" />
         ) : (
           <ProfileDropdown
             userId={userId}

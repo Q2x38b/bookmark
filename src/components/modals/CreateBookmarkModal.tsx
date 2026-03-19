@@ -10,8 +10,8 @@ import {
   Upload,
   Loader2,
   File,
-  HelpCircle,
   Pipette,
+  Sparkles,
 } from "lucide-react"
 import { HexColorPicker, HexColorInput } from "react-colorful"
 import {
@@ -28,12 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import {
   Popover,
   PopoverContent,
@@ -206,21 +200,28 @@ export function CreateBookmarkModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
         {/* Header */}
-        <div className="p-4 sm:p-6 pb-3 sm:pb-4">
-          <h2 className="text-lg font-medium text-foreground">
-            New Bookmark
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add a new bookmark to your collection.
-          </p>
+        <div className="px-5 py-4 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-foreground/[0.06]">
+              <Sparkles className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">
+                New Bookmark
+              </h2>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">
+                Save a link, color, note, or file
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Form */}
         <form id="createBookmarkForm" onSubmit={(e) => { e.preventDefault(); if (isValid() && type !== "file") handleSubmit(); }}>
-        <div className="px-4 sm:px-6 pb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="px-4 pb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Name Field */}
             <div>
               <Label htmlFor="bookmarkName" className="mb-2">
@@ -248,19 +249,19 @@ export function CreateBookmarkModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="link">
-                    <Link className="h-4 w-4" />
+                    <Link className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
                     <span>Link</span>
                   </SelectItem>
                   <SelectItem value="color">
-                    <Palette className="h-4 w-4" />
+                    <Palette className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
                     <span>Color</span>
                   </SelectItem>
                   <SelectItem value="note">
-                    <FileText className="h-4 w-4" />
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
                     <span>Note</span>
                   </SelectItem>
                   <SelectItem value="file">
-                    <File className="h-4 w-4" />
+                    <File className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
                     <span>File</span>
                   </SelectItem>
                 </SelectContent>
@@ -270,7 +271,7 @@ export function CreateBookmarkModal({
         </div>
 
         {/* Type-specific Content */}
-        <div className="px-4 sm:px-6 pb-4 sm:pb-5">
+        <div className="px-4 pb-3">
           {type === "link" && (
             <div className="space-y-2">
               <Label htmlFor="urlInput">URL</Label>
@@ -379,10 +380,10 @@ export function CreateBookmarkModal({
           {type === "file" && (
             <div
               className={cn(
-                "border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors",
+                "border border-dashed rounded-lg p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-150",
                 isDragging
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-muted-foreground/50"
+                  ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20"
+                  : "border-border/60 hover:border-border hover:bg-muted/30"
               )}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={handleDragOver}
@@ -390,24 +391,20 @@ export function CreateBookmarkModal({
               onDrop={handleDrop}
             >
               {isUploading ? (
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/70" />
               ) : (
                 <>
-                  <div className="mb-2 bg-muted rounded-full p-3">
-                    <Upload className="h-5 w-5 text-muted-foreground" />
+                  <div className="mb-3 p-3 rounded-xl bg-foreground/[0.06]">
+                    <Upload className="h-5 w-5 text-muted-foreground/70" strokeWidth={1.5} />
                   </div>
                   <p className="text-sm font-medium text-foreground">
-                    Upload a file
+                    Drop file here
                   </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    or,{" "}
-                    <label
-                      htmlFor="fileUpload"
-                      className="text-primary hover:text-primary/90 font-medium cursor-pointer"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      click to browse
-                    </label>
+                  <p className="text-xs text-muted-foreground/70 mt-1">
+                    or{" "}
+                    <span className="text-foreground/80 font-medium">
+                      browse
+                    </span>
                   </p>
                 </>
               )}
@@ -417,51 +414,28 @@ export function CreateBookmarkModal({
         </form>
 
         {/* Footer */}
-        <div className="px-4 sm:px-6 py-3 border-t border-border bg-muted rounded-b-lg flex justify-between items-center gap-2">
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="hidden sm:flex items-center text-muted-foreground hover:text-foreground"
-                >
-                  <HelpCircle className="h-4 w-4 mr-1" />
-                  Need help?
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="py-3 bg-background text-foreground border">
-                <div className="space-y-1">
-                  <p className="text-[13px] font-medium">Bookmark types</p>
-                  <p className="text-muted-foreground text-xs max-w-[200px]">
-                    Links save URLs, colors save hex codes, notes save text, and files upload to storage.
-                  </p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <div className="flex gap-2 flex-1 sm:flex-none justify-end">
+        <div className="px-5 py-3 border-t border-border/50 flex justify-end items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-3 text-muted-foreground"
+            onClick={handleClose}
+          >
+            Cancel
+          </Button>
+          {type !== "file" && (
             <Button
-              variant="outline"
-              className="h-9 px-4 text-sm font-medium flex-1 sm:flex-none"
-              onClick={handleClose}
+              type="submit"
+              form="createBookmarkForm"
+              size="sm"
+              className="h-8 px-4"
+              onClick={handleSubmit}
+              disabled={isSubmitting || !isValid()}
             >
-              Cancel
+              {isSubmitting && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+              Create
             </Button>
-            {type !== "file" && (
-              <Button
-                type="submit"
-                form="createBookmarkForm"
-                className="h-9 px-4 text-sm font-medium flex-1 sm:flex-none"
-                onClick={handleSubmit}
-                disabled={isSubmitting || !isValid()}
-              >
-                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Create
-              </Button>
-            )}
-          </div>
+          )}
         </div>
 
         <input

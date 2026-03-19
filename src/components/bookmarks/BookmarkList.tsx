@@ -4,7 +4,7 @@ import { api } from "../../../convex/_generated/api"
 import { Id, Doc } from "../../../convex/_generated/dataModel"
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion"
 import { toast } from "sonner"
-import { Trash2, FolderInput, Copy, Download, X, ListChecks, Globe, Link2, User, MoreHorizontal } from "lucide-react"
+import { Trash2, FolderInput, Copy, Download, X, ListChecks, Globe, Link2, User, MoreHorizontal, Search } from "lucide-react"
 import { BookmarkInput } from "./BookmarkInput"
 import { BookmarkRow } from "./BookmarkRow"
 import { Button } from "@/components/ui/button"
@@ -30,12 +30,13 @@ const CreateBookmarkModal = lazy(() => import("@/components/modals/CreateBookmar
 const BulkShareModal = lazy(() => import("@/components/modals/BulkShareModal").then(m => ({ default: m.BulkShareModal })))
 
 // Memoized loading skeleton for bookmarks
-const BookmarkRowSkeleton = memo(function BookmarkRowSkeleton() {
+const BookmarkRowSkeleton = memo(function BookmarkRowSkeleton({ index = 0 }: { index?: number }) {
   return (
-    <div className="flex items-center gap-2 px-2.5 py-2 rounded-md">
-      <Skeleton className="h-5 w-5 rounded shrink-0" />
-      <Skeleton className="h-4 flex-1" />
-      <Skeleton className="h-3 w-12" />
+    <div className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg" style={{ opacity: 1 - index * 0.08 }}>
+      <Skeleton className="h-4 w-4 rounded-sm shrink-0" />
+      <Skeleton className="h-3.5 flex-1 max-w-[180px]" />
+      <div className="flex-1" />
+      <Skeleton className="h-2.5 w-10" />
     </div>
   )
 })
@@ -327,7 +328,7 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Sticky header section */}
-      <div className="shrink-0 bg-background pt-4 pb-2 space-y-2 px-3">
+      <div className="shrink-0 bg-background pt-8 pb-2 space-y-2 px-3">
         <BookmarkInput
           userId={userId}
           groupId={groupId}
@@ -338,9 +339,9 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
         />
 
         {/* Column Headers */}
-        <div className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground border-b border-border pb-1.5">
-          <div className="flex-1 min-w-0">Title</div>
-          <div className="w-16 text-right shrink-0">Created</div>
+        <div className="flex items-center gap-1.5 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50 border-b border-border/50 pb-2">
+          <div className="flex-1 min-w-0">Name</div>
+          <div className="w-16 text-right shrink-0">Added</div>
         </div>
       </div>
 
@@ -350,7 +351,7 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
           // Show skeleton on initial load
           <div className="space-y-0.5">
             {[...Array(8)].map((_, i) => (
-              <BookmarkRowSkeleton key={i} />
+              <BookmarkRowSkeleton key={i} index={i} />
             ))}
           </div>
         ) : (
@@ -385,47 +386,33 @@ export function BookmarkList({ userId, groupId, groups }: BookmarkListProps) {
         )}
 
         {!isInitialLoading && bookmarks?.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-muted/30 border border-border/30 mb-3">
-            {searchQuery ? (
-              <svg
-                className="h-4 w-4 text-muted-foreground/50"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="mb-5 p-4 rounded-2xl bg-muted/40">
+              {searchQuery ? (
+                <Search className="h-6 w-6 text-muted-foreground/50" strokeWidth={1.5} />
+              ) : (
+                <svg
+                  className="h-6 w-6 text-muted-foreground/50"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                />
-              </svg>
-            ) : (
-              <svg
-                className="h-4 w-4 text-muted-foreground/50"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.193-9.193a4.5 4.5 0 00-6.364 0l-4.5 4.5a4.5 4.5 0 001.242 7.244"
-                />
-              </svg>
-            )}
+                >
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                </svg>
+              )}
+            </div>
+            <p className="text-sm font-medium text-foreground">
+              {searchQuery ? "No results found" : "No bookmarks yet"}
+            </p>
+            <p className="text-[13px] text-muted-foreground/70 mt-1.5 max-w-[200px]">
+              {searchQuery
+                ? "Try a different search term"
+                : "Save links, colors, notes, and files to get started"}
+            </p>
           </div>
-          <p className="text-sm font-medium text-foreground">
-            {searchQuery ? "No bookmarks found" : "No bookmarks yet"}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {searchQuery
-              ? "Try a different search term"
-              : "Add a link, note, or color to get started"}
-          </p>
-        </div>
         )}
       </div>
 

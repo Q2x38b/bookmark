@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react"
 import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
-import { Plus, Search } from "lucide-react"
+import { Plus, Search, Command } from "lucide-react"
 import { isValidUrl, isValidHexColor, getFaviconUrl, normalizeUrl } from "@/lib/utils"
 import { useHaptics } from "@/hooks/useHaptics"
 
@@ -138,10 +138,10 @@ export function BookmarkInput({
 
   return (
     <div
-      className={`relative rounded-md border bg-card transition-colors cursor-text ${
+      className={`relative rounded-lg border bg-background transition-all duration-150 cursor-text shadow-sm ${
         isDragging
-          ? "border-primary bg-primary/5"
-          : "border-border hover:border-muted-foreground/50"
+          ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20"
+          : "border-border/60 hover:border-border hover:shadow-md"
       }`}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
@@ -151,7 +151,7 @@ export function BookmarkInput({
       {/* Left icon - absolutely positioned */}
       <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
         {searchQuery ? (
-          <Search className="h-4 w-4 text-muted-foreground" />
+          <Search className="h-4 w-4 text-muted-foreground/70" strokeWidth={1.5} />
         ) : null}
       </div>
 
@@ -165,17 +165,17 @@ export function BookmarkInput({
             haptics.soft()
             onOpenCreateModal?.()
           }}
-          className="absolute left-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded hover:bg-muted transition-colors z-10"
+          className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center justify-center h-6 w-6 rounded-full bg-foreground/[0.08] hover:bg-foreground/[0.12] transition-colors z-10"
         >
-          <Plus className="h-4 w-4 text-muted-foreground" />
+          <Plus className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
         </button>
       )}
 
       <input
         ref={inputRef}
         type="text"
-        placeholder="Insert a link, color, text, or drop a file..."
-        className="w-full bg-transparent text-base sm:text-sm outline-none placeholder:text-muted-foreground py-2 pl-9 pr-16"
+        placeholder="Add a link, note, color, or drop a file..."
+        className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/60 py-2 pl-10 pr-20"
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -183,10 +183,14 @@ export function BookmarkInput({
         autoComplete="off"
       />
 
-      {/* Right suffix - absolutely positioned */}
-      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-muted-foreground pointer-events-none">
-        <kbd className="rounded bg-muted px-1.5 py-0.5">⌘</kbd>
-        <kbd className="rounded bg-muted px-1.5 py-0.5">F</kbd>
+      {/* Right suffix - keyboard shortcut hint */}
+      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
+        <kbd className="inline-flex items-center justify-center h-5 min-w-5 rounded border border-border/50 bg-muted/50 px-1 text-[10px] font-medium text-muted-foreground/70">
+          <Command className="h-2.5 w-2.5" strokeWidth={2} />
+        </kbd>
+        <kbd className="inline-flex items-center justify-center h-5 min-w-5 rounded border border-border/50 bg-muted/50 px-1.5 text-[10px] font-medium text-muted-foreground/70">
+          F
+        </kbd>
       </div>
 
       <input
