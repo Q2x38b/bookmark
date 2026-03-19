@@ -84,7 +84,7 @@ const faqs = [
   },
 ]
 
-// Animated section wrapper
+// Animated section wrapper - using transform string for hardware acceleration
 function AnimatedSection({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: "-100px" })
@@ -92,9 +92,9 @@ function AnimatedSection({ children, className, delay = 0 }: { children: React.R
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
-      transition={{ duration: 0.6, delay }}
+      initial={{ opacity: 0, transform: "translateY(40px)" }}
+      animate={isInView ? { opacity: 1, transform: "translateY(0)" } : { opacity: 0, transform: "translateY(40px)" }}
+      transition={{ duration: 0.5, delay, ease: [0.23, 1, 0.32, 1] }}
       className={className}
     >
       {children}
@@ -132,7 +132,7 @@ function FAQItem({ question, answer, isOpen, onClick }: { question: string; answ
       <motion.div
         initial={false}
         animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
         className="overflow-hidden"
       >
         <p className="px-5 pb-4 pl-14 text-sm text-muted-foreground">
@@ -430,7 +430,8 @@ export default function Landing() {
             {features.map((feature, index) => (
               <AnimatedSection key={index} delay={index * 0.1}>
                 <motion.div
-                  whileHover={{ y: -4 }}
+                  whileHover={{ transform: "translateY(-4px)" }}
+                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
                   className="group rounded-2xl border border-[#262626] bg-[#141414] p-6 transition-colors hover:border-[#333] hover:bg-[#1a1a1a]"
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#262626] mb-4 group-hover:bg-[#8B5CF6]/20 transition-colors">

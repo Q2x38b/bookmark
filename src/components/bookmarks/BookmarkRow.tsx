@@ -394,11 +394,13 @@ export const BookmarkRow = memo(forwardRef<HTMLDivElement, BookmarkRowProps>(fun
         <motion.div
           initial={false}
           animate={{
-            width: isSelectMode ? 20 : 0,
-            x: isSelectMode ? 0 : -10,
+            transform: isSelectMode
+              ? "translateX(0) scaleX(1)"
+              : "translateX(-10px) scaleX(0)",
             opacity: isSelectMode ? 1 : 0
           }}
-          transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+          transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+          style={{ transformOrigin: "left center", width: 20 }}
           className="shrink-0 flex items-center justify-center overflow-hidden"
           onClick={(e) => {
             if (!isSelectMode) return
@@ -530,18 +532,6 @@ export const BookmarkRow = memo(forwardRef<HTMLDivElement, BookmarkRowProps>(fun
             <ContextMenuShortcut>⌘E</ContextMenuShortcut>
           </ContextMenuItem>
 
-          <ContextMenuSeparator className="my-1" />
-
-          <ContextMenuItem
-            variant="destructive"
-            className="gap-2 cursor-pointer text-[13px] h-7 px-2"
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete
-            <ContextMenuShortcut>⌘⌫</ContextMenuShortcut>
-          </ContextMenuItem>
-
           {bookmark.type === "link" && (
             <ContextMenuItem
               className="gap-2 cursor-pointer text-[13px] h-7 px-2"
@@ -603,14 +593,24 @@ export const BookmarkRow = memo(forwardRef<HTMLDivElement, BookmarkRowProps>(fun
             </ContextMenuSubContent>
           </ContextMenuSub>
 
-          <ContextMenuSeparator className="my-1" />
-
           <ContextMenuItem
             className="gap-2 cursor-pointer text-[13px] h-7 px-2"
             onClick={handleSelectMultiple}
           >
             <ListChecks className="h-3.5 w-3.5" />
             Select Multiple
+          </ContextMenuItem>
+
+          <ContextMenuSeparator className="my-1" />
+
+          <ContextMenuItem
+            variant="destructive"
+            className="gap-2 cursor-pointer text-[13px] h-7 px-2"
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+            <ContextMenuShortcut>⌘⌫</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>

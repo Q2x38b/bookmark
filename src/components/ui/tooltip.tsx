@@ -2,7 +2,13 @@ import * as React from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import { cn } from "@/lib/utils"
 
-const TooltipProvider = TooltipPrimitive.Provider
+// Provider with skipDelayDuration for instant subsequent tooltips
+const TooltipProvider = ({ children, ...props }: React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Provider>) => (
+  <TooltipPrimitive.Provider skipDelayDuration={300} delayDuration={400} {...props}>
+    {children}
+  </TooltipPrimitive.Provider>
+)
+
 const Tooltip = TooltipPrimitive.Root
 const TooltipTrigger = TooltipPrimitive.Trigger
 
@@ -17,7 +23,14 @@ const TooltipContent = React.forwardRef<
       className={cn(
         // Hide on touch devices (mobile)
         "hidden sm:block pointer-coarse:hidden",
-        "z-[100] overflow-hidden rounded-lg bg-popover ring-1 ring-foreground/10 px-3 py-1.5 text-sm font-medium text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        // Emil Kowalski style - scale from 0.97, not 0.95, with origin from trigger
+        "z-[100] overflow-hidden rounded-lg bg-popover ring-1 ring-foreground/10 px-3 py-1.5 text-sm font-medium text-popover-foreground shadow-md",
+        "origin-[var(--radix-tooltip-content-transform-origin)]",
+        "data-[state=delayed-open]:animate-in data-[state=closed]:animate-out",
+        "data-[state=delayed-open]:fade-in-0 data-[state=closed]:fade-out-0",
+        "data-[state=delayed-open]:zoom-in-[0.97] data-[state=closed]:zoom-out-[0.97]",
+        // Instant animation for subsequent tooltips (data-[state=instant-open])
+        "data-[state=instant-open]:animate-none data-[state=instant-open]:opacity-100",
         className
       )}
       {...props}

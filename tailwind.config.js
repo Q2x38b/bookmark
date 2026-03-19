@@ -65,19 +65,29 @@ export default {
           to: { height: '0' }
         },
         'dialog-in': {
-          from: { opacity: '0', transform: 'translate(-50%, -50%) scale(0.9)' },
+          from: { opacity: '0', transform: 'translate(-50%, -50%) scale(0.96)' },
           to: { opacity: '1', transform: 'translate(-50%, -50%) scale(1)' }
         },
         'dialog-out': {
           from: { opacity: '1', transform: 'translate(-50%, -50%) scale(1)' },
-          to: { opacity: '0', transform: 'translate(-50%, -50%) scale(0.9)' }
+          to: { opacity: '0', transform: 'translate(-50%, -50%) scale(0.96)' }
+        },
+        'popover-in': {
+          from: { opacity: '0', transform: 'scale(0.96)' },
+          to: { opacity: '1', transform: 'scale(1)' }
+        },
+        'popover-out': {
+          from: { opacity: '1', transform: 'scale(1)' },
+          to: { opacity: '0', transform: 'scale(0.96)' }
         }
       },
       animation: {
-        'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out',
-        'dialog-in': 'dialog-in 150ms ease-out',
-        'dialog-out': 'dialog-out 100ms ease-in'
+        'accordion-down': 'accordion-down 0.2s cubic-bezier(0.23, 1, 0.32, 1)',
+        'accordion-up': 'accordion-up 0.2s cubic-bezier(0.23, 1, 0.32, 1)',
+        'dialog-in': 'dialog-in 180ms cubic-bezier(0.23, 1, 0.32, 1)',
+        'dialog-out': 'dialog-out 120ms cubic-bezier(0.23, 1, 0.32, 1)',
+        'popover-in': 'popover-in 150ms cubic-bezier(0.23, 1, 0.32, 1)',
+        'popover-out': 'popover-out 100ms cubic-bezier(0.23, 1, 0.32, 1)'
       }
     }
   },
